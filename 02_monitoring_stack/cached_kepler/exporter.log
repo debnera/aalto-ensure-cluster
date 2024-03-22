@@ -1,0 +1,27 @@
+wickstjo@master:~$ kubectl logs kepler-7xb7t -n kepler
+
+I1023 18:27:23.382618       1 gpu.go:46] Failed to init nvml, err: could not init nvml: error opening libnvidia-ml.so.1: libnvidia-ml.so.1: cannot open shared object file: No such file or directory
+I1023 18:27:23.390794       1 qat.go:35] Failed to init qat-telemtry err: could not get qat status exit status 127
+I1023 18:27:23.394889       1 exporter.go:158] Kepler running on version: 02c16c1
+I1023 18:27:23.394900       1 config.go:270] using gCgroup ID in the BPF program: true
+I1023 18:27:23.394919       1 config.go:272] kernel version: 6.2
+I1023 18:27:23.394934       1 exporter.go:170] LibbpfBuilt: false, BccBuilt: true
+I1023 18:27:23.394938       1 exporter.go:189] EnabledBPFBatchDelete: true
+I1023 18:27:23.395039       1 power.go:71] Unable to obtain power, use estimate method
+I1023 18:27:23.395047       1 redfish.go:169] failed to get redfish credential file path
+I1023 18:27:23.395049       1 power.go:56] use acpi to obtain power
+I1023 18:27:23.395147       1 acpi.go:67] Could not find any ACPI power meter path. Is it a VM?
+I1023 18:27:25.460532       1 watcher.go:66] Using in cluster k8s config cannot attach kprobe, probe entry may not exist
+I1023 18:27:26.068473       1 bcc_attacher.go:94] attaching kprobe to finish_task_switch failed, trying finish_task_switch.isra.0 instead perf_event_open: No such file or directory
+I1023 18:27:26.069642       1 bcc_attacher.go:120] failed to attach perf event cpu_ref_cycles_hc_reader: failed to open bpf perf event: no such file or directory perf_event_open: No such file or directory
+I1023 18:27:26.069679       1 bcc_attacher.go:120] failed to attach perf event cpu_instructions_hc_reader: failed to open bpf perf event: no such file or directory perf_event_open: No such file or directory
+I1023 18:27:26.069697       1 bcc_attacher.go:120] failed to attach perf event cache_miss_hc_reader: failed to open bpf perf event: no such file or directory perf_event_open: No such file or directory
+I1023 18:27:26.069717       1 bcc_attacher.go:120] failed to attach perf event cpu_cycles_hc_reader: failed to open bpf perf event: no such file or directory
+I1023 18:27:26.069726       1 bcc_attacher.go:183] Successfully load eBPF module from bcc with option: [-DMAP_SIZE=10240 -DNUM_CPUS=4 -DSET_GROUP_ID]
+I1023 18:27:26.085352       1 container_energy.go:109] Using the Ratio/DynPower Power Model to estimate Container Platform Power
+I1023 18:27:26.085364       1 container_energy.go:118] Using the Ratio/DynPower Power Model to estimate Container Component Power
+I1023 18:27:26.085369       1 process_power.go:108] Using the Ratio/DynPower Power Model to estimate Process Platform Power
+I1023 18:27:26.085407       1 process_power.go:117] Using the Ratio/DynPower Power Model to estimate Process Component Power
+I1023 18:27:26.085542       1 node_platform_energy.go:53] Using the LinearRegressor/AbsPower Power Model to estimate Node Platform Power
+I1023 18:27:26.085626       1 node_component_energy.go:54] Using the LinearRegressor/AbsPower Power Model to estimate Node Component Power
+I1023 18:27:26.085676       1 exporter.go:276] Started Kepler in 2.690803169s

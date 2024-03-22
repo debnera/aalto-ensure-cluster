@@ -10,7 +10,7 @@ sudo swapoff -a
 systemctl stop firewalld
 sudo systemctl disable firewalld
 
-# INVERSE PROCESS WHEN DONE
+# DEBUG: INVERSE THE PREVIOUS ACTIONS
 # sudo swapon -a
 # systemctl start firewalld
 # sudo systemctl enable firewalld

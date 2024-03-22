@@ -1,5 +1,8 @@
 ### 1. INSTALL BASELINE UBUNTU DEPENDENCIES
 
+- `./00_install/00_ubuntu_init.sh`
+- Individual script steps:
+
 ```bash
 # FOR SSH-ING TO CLUSTER NODES
 sudo apt-get install -y openssh-server openssh-client
@@ -10,6 +13,9 @@ sudo apt-get install -y nano git wget curl make gh net-tools make
 
 ### 2. INSTALL DOCKER
 
+- `./00_install/01_docker.sh`
+- Individual script steps:
+
 ```bash
 # DOWNLOAD & INSTALL DOCKER
 curl -fsSL https://get.docker.com -o get-docker.sh
@@ -17,20 +23,25 @@ sudo sh test-docker.sh
 ```
 
 ```bash
-# SETUP DOCKER PERMISSIONS FOR LINUX & START THE PROCESS
+# SETUP DOCKER PERMISSIONS FOR LINUX
 sudo usermod -aG docker $USER
 newgrp docker
+
+# START THE LINUX SERVICES
 sudo systemctl enable docker.service
 sudo systemctl enable containerd.service
 ```
 
 ```bash
-# CHECK THAT DOCKER WORKS
+# VERIFY THAT DOCKER WORKS
 docker version
 sudo docker run hello-world
 ```
 
 ### 3. INSTALL DOCKER-CRI (ALLOWS KUBERNETES TO USE DOCKER)
+
+- `./00_install/02_docker_cri.sh`
+- Individual script steps:
 
 ```bash
 # DOWNLOAD & INSTALL GO-LANG
@@ -70,6 +81,9 @@ sudo systemctl enable --now cri-docker.socket
 
 ### 4. INSTALL KUBERNETES COMPONENTS
 
+- `./00_install/03_kube_systems.sh`
+- Individual script steps:
+
 ```bash
 # ADD KUBE COMPONENT CERTS
 sudo apt-get update
@@ -90,7 +104,7 @@ sudo apt-mark hold kubelet kubeadm kubectl
 ```
 
 ```bash
-# CHECK THAT EVERYTHING IS OK
+# VERIFY THAT EVERYTHING WORKS
 # KUBECTL CAN ONLY BE TESTED ONCE THE CLUSTER IS RUNNING
 kubelet --version
 kubeadm version
