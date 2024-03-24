@@ -1,13 +1,6 @@
-### GENERAL NOTES:
-- Once deployed, `Grafana` is available at port `3000`.
-- Once deployed, `Prometheus` is available at port `9090`.
-- Use port forwarding screens to make these services available through the master node:
-    - `./monitoring_port_forwards.sh`
+## 1. DEPLOY PROMETHEUS & GRAFANA MONITORING STACK
 
-### 1. DEPLOY PROMETHEUS & GRAFANA MONITORING STACK
-
-- Deploy cached (modified) files:
-- `./02_monitoring_stack/01_cached_monitoring.sh`
+- Deploy cached (modified) files: `./01_cached_monitoring.sh`
 
 ```bash
 kubectl apply --server-side -f cached_monitoring/setup/
@@ -15,8 +8,7 @@ kubectl wait --for condition=Established --all CustomResourceDefinition --namesp
 kubectl apply -f cached_monitoring/
 ```
 
-- Generate fresh deployment files:
-- `./02_monitoring_stack/01_fresh_monitoring.sh`
+- Generate fresh deployment files: `./01_fresh_monitoring.sh`
 
 ```bash
 # CLONE THE PROMETHEUS & GRAFANA DEPLOYMENT FILES FROM REPO
@@ -29,18 +21,16 @@ kubectl wait --for condition=Established --all CustomResourceDefinition --namesp
 kubectl apply -f kube-prometheus/manifests/
 ```
 
-### 2. DEPLOY KEPLER NODE MONITORS
+## 2. DEPLOY KEPLER NODE MONITORS
 
-- Deploy cached (modified) files:
-- `./02_monitoring_stack/02_cached_kepler.sh`
+- Deploy cached (modified) files: `./02_cached_kepler.sh`
 
 ```bash
 # DEPLOY GENERATED KEPLER MANIFESTS
 kubectl apply -f cached_kepler/deployment.yaml
 ```
 
-- Generate fresh deployment files:
-- `./02_monitoring_stack/02_fresh_kepler.sh`
+- Generate fresh deployment files: `./02_fresh_kepler.sh`
 
 ```bash
 # CLONE KEPLER SOURCE FILES FROM REPO
@@ -62,7 +52,7 @@ make build-manifest OPTS="PROMETHEUS_DEPLOY HIGH_GRANULARITY ESTIMATOR_SIDECAR_D
 kubectl apply -f _output/generated-manifest/deployment.yaml
 ```
 
-### 3. KUBERNETES METRICS SERVER
+## 3. KUBERNETES METRICS SERVER
 
 - Allows kubernetes to track the resource usage of individual pods.
 - Required for dynamic service scaling.
@@ -71,7 +61,7 @@ kubectl apply -f _output/generated-manifest/deployment.yaml
 kubectl apply -f kube_metrics_server.yaml
 ```
 
-### 4. GRAFANA DASHBOARDS
+## 4. GRAFANA DASHBOARDS
 
 - `Grafana` links up with `Prometheus` to render real-time data dashboards.
 - Dashboards are stored in a JSON format, and can be imported/exported through the web GUI.
@@ -85,4 +75,27 @@ Kube State:         grafana_dashboards/kube_state.json
 
 Kafka Metrics:      grafana_dashboards/kafka_metrics.json
 Kepler Metrics:     grafana_dashboards/kepler_metrics.json
+```
+
+## 99. KUBERNETES PORT FORWARDS & CLOUD PROXIES
+
+- Once deployed, `Grafana` is available at port `3000`.
+- Once deployed, `Prometheus` is available at port `9090`.
+- Quality of Life:
+    - Use port forwarding screens to make these services **locally** available through the master node.
+    - Make these services **publically** available through a cloud proxy.
+    - `./monitoring_port_forwards.sh`
+
+```bash
+# EXAMPLE VARIABLES
+MASTER_IP="192.158.1.38"
+CLOUD_PROXY="user@myvm.northeurope.cloudapp.azure.com"
+
+# KUBERNETES SERVICE PORT FORWARDS
+screen -dmS grafana_pf kubectl -n monitoring port-forward svc/grafana 3000 --address=$MASTER_IP
+screen -dmS prometheus_pf kubectl -n monitoring port-forward svc/prometheus-k8s 9090 --address=$MASTER_IP
+
+# CREATE PORT FORWARDS TO CLOUD PROXY
+screen -dmS grafana_pf ssh -R 3000:$MASTER_IP:3000 $CLOUD_PROXY
+screen -dmS prometheus_pf ssh -R 9090:$MASTER_IP:9090 $CLOUD_PROXY
 ```
