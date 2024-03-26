@@ -6,7 +6,6 @@ import io, torch, socket, os, logging
 
 def run():
 
-    # DYNAMIC ARGUMENTS FOR YOLO PROCESSING
     args = {
 
         # SPECIFY DEFAULT VALUES

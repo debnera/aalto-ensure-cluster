@@ -19,7 +19,7 @@
     - Kafka JMX module: `configs/jmx_prometheus_javaagent-0.17.2.jar`.
     - Kafka JMX config: `configs/kafka_scraper.yml`.
     - Prometheus scrape config: `configs/prometheus_config.yml`.
-- Launch script: `./run.sh`
+- Launch script: [`./run.sh`](run.sh)
 
 ```bash
 # WHEN DOING MULTIPLE EXPERIMENTS, YOUR DISC FILLS UP QUICKLY WITH DEAD ARTIFACTS

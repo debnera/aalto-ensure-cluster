@@ -1,6 +1,6 @@
-### 1. INSTALL BASELINE UBUNTU DEPENDENCIES
+## 1. INSTALL BASELINE UBUNTU DEPENDENCIES
 
-- `./00_install/00_ubuntu_init.sh`
+- Script location: [`./00_ubuntu_init.sh`](00_ubuntu_init.sh)
 - Individual script steps:
 
 ```bash
@@ -11,9 +11,9 @@ sudo apt-get install -y openssh-server openssh-client
 sudo apt-get install -y nano git wget curl make gh net-tools make
 ```
 
-### 2. INSTALL DOCKER
+## 2. INSTALL DOCKER
 
-- `./00_install/01_docker.sh`
+- Script location: [`./01_docker.sh`](01_docker.sh)
 - Individual script steps:
 
 ```bash
@@ -38,9 +38,9 @@ docker version
 sudo docker run hello-world
 ```
 
-### 3. INSTALL DOCKER-CRI (ALLOWS KUBERNETES TO USE DOCKER)
+## 3. INSTALL DOCKER-CRI (ALLOWS KUBERNETES TO USE DOCKER)
 
-- `./00_install/02_docker_cri.sh`
+- Script location: [`./02_docker_cri.sh`](02_docker_cri.sh)
 - Individual script steps:
 
 ```bash
@@ -79,9 +79,9 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now cri-docker.socket
 ```
 
-### 4. INSTALL KUBERNETES COMPONENTS
+## 4. INSTALL KUBERNETES COMPONENTS
 
-- `./00_install/03_kube_systems.sh`
+- Script location: [`./03_kube_systems.sh`](03_kube_systems.sh)
 - Individual script steps:
 
 ```bash

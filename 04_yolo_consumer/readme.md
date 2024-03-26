@@ -1,17 +1,34 @@
+## TABLE OF CONTENTS
+1. [Program the Yolo processor](#)
+    1. [Define the default processor params](#)
+2. [Create a standalone Docker image](#)
+3. [Make the Docker image publically available](#)
+4. [Configure the Kubernetes deployment](#)
+    1. [Define the Docker image location](#)
+    2. [Override the Docker image args](#)
+    3. [Define min/max resource thresholds for pods](#)
+    4. [Define the min/max pod count](#)
+    5. [Define when pods should be created/destroyed](#)
+    6. [Define how often Kubernetes is allowed to scale up/down](#)
+5. [Initialize Kafka topics & deploy consumer pods](#)
+
 ## 1. PROGRAM THE YOLO PROCESSOR
 
-- File location: [`/app/processor.py`](/app/processor.py)
+- Relevant files:
+    - Main file: [`/app/processor.py`](/app/processor.py)
+    - Kafka clients: [`/app/utilz/kafka_utils.py`](/app/utilz/kafka_utils.py)
+    - Yolo models: [`/app/models`](/app/models)
 - The python program loop:
-    1. It loads a specified `Yolo` model from the `/models` directory.
-    2. It subscribes to a Kafka topic (`yolo_input`) and extracts data from it.
+    1. Load a specified `Yolo` model from the `/models` directory.
+    2. Subscribe to a Kafka topic (`yolo_input`) and extracts data from it.
         - Many programs can be subscribed from the same topic.
         - They can extract data in parallel from different topic partitions.
-    3. Extracted data is converted to a `bitmap image`, which is fed to the `Yolo` model.
-    4. If toggled, the Yolo inference statistics are sent to another Kafka topic (`yolo_output`).
+    3. The extracted data is converted to a `image`, which is fed to the `Yolo` model.
+    4. If toggled, the `Yolo` inference statistics are sent to another Kafka topic (`yolo_output`).
     5. Repeat until manually killed.
 
 
-#### DEFINE PROCESSOR PARAMS
+#### 1.1. DEFINE PROCESSOR PARAMS
 ```bash
 args = {
 
@@ -28,6 +45,7 @@ args = {
 
 ## 2. CREATE A STANDALONE DOCKER IMAGE
 
+- Script location: [`./01_build_and_test.sh`](01_build_and_test.sh)
 - All `Kubernetes` pods eventually die or reboot, intentionally or otherwise.
 - All your `Yolo processors` should therefore use be identical in structure.
 - We accomplish this requirement by wrapping our python program in a `Docker Image`.
@@ -48,11 +66,11 @@ docker run workload_consumer
 
 ## 3. MAKE THE DOCKER IMAGE PUBLICALLY AVAILABLE
 
+- Script location: [`./02_refresh_image.sh`](02_refresh_image.sh)
 - Kubernetes is distributed, therefore your docker images must be publically available to all cluster nodes for deployments to work.
     - Setting up a `local image repository` is possible, but the available docker images were too buggy and dysfunctional at the time to bother with.
     - I chose to use `Docker Hub` instead as it is very straight forward.
 - Every time you update your `Yolo processor`, you must also build and push the new image to Docker Hub.
-- This can be done via script: [`./refresh_image.sh`](refresh_image.sh)
 
 ```bash
 # LOGIN TO DOCKER HUB ONCE
@@ -74,11 +92,11 @@ docker push $MY_GIT_USERNAME/workload_consumer:latest
 
 ## 4. CONFIGURE THE KUBERNETES DEPLOYMENT
 
-- File location: [`yolo_depl.yaml`](yolo_depl.yaml)
+- File location: [`yolo_deployment.yaml`](yolo_deployment.yaml)
 - Now that we have a `Docker` image, we need to configure how Kubernetes should treat it.
 - Here are some central points of interest:
 
-#### DEFINE THE DOCKER IMAGE
+#### 4.1. DEFINE THE DOCKER IMAGE
 ```yaml
 # DEFINE THE DOCKERHUB LOCATION OF YOUR IMAGE
 image: wickstjo/workload_consumer:latest
@@ -88,7 +106,7 @@ image: wickstjo/workload_consumer:latest
 imagePullPolicy: Always
 ```
 
-#### DEFINE THE YOLO PROCESSOR ARGS
+#### 4.2. OVERRIDE YOLO PROCESSOR ARGS
 
 ```yaml
 # VALIDATE YOLO RESULTS OR NOT?
@@ -111,7 +129,7 @@ imagePullPolicy: Always
     - Use the capital string representation of either `TRUE` or `FALSE`.
     - Use the string name of the models in `app/models`, no suffix needed.
 
-#### DEFINE MIN/MAX RESOURCE THRESHOLD PER POD
+#### 4.3. DEFINE MIN/MAX RESOURCE THRESHOLD PER POD
 
 ```yaml
 # MAXIMUM RESOURCE LIMIT FOR POD
@@ -133,7 +151,7 @@ requests:
     - High values (2K+) have been quite stable.
     - Difficult to trace why.
 
-#### DEFINE MIN/MAX POD COUNT
+#### 4.4. DEFINE MIN/MAX POD COUNT
 
 ```yaml
 minReplicas: 1
@@ -143,7 +161,7 @@ maxReplicas: 34
 - This property goes hand-in-hand with resource limits.
 - The minimum values should be at least 1, while the maximum value can technically be infinite, even if `(max_pods * min_pod_resource) > cluster_total_resources`
 
-#### DEFINE WHEN PODS SHOULD BE CREATED/DESTROYED
+#### 4.5. DEFINE WHEN PODS SHOULD BE CREATED/DESTROYED
 
 ```yaml
 resource:
@@ -165,7 +183,7 @@ resource:
 </p>
 
 
-#### DEFINE HOW OFTEN KUBERENTES IS ALLOWED TO SCALE UP/DOWN
+#### 4.6: DEFINE HOW OFTEN KUBERENTES IS ALLOWED TO SCALE UP/DOWN
 
 ```yaml
 scaleDown:
@@ -182,6 +200,39 @@ scaleUp:
     - Is your workload bumpy or gradual?
     - Is it a problem if your existing pods fall behind every now and then?
     - Do you intentionally want to cause trouble for Kubernetes? 
+
+## 5. INITIALIZE KAFKA TOPICS & DEPLOY PODS
+
+- Script location: [`./03_init_and_deploy.sh`](03_init_and_deploy.sh)
+- Kube pods should not be deployed until the necessary Kafka topics have been created.
+    - Results in unpredictable timeouts and partition assignments.
+- To fix this, we run a script that:
+    1. Creates `n` temporary `Kafka` producers and consumers.
+    2. Each producer sends one message to their designated consumer.
+    3. After every consumer confirms, each topic partition has been initialized and tested.
+- Now we can safely deploy our `Kubernetes` pods.
+- To make sure that `Kafka` is fully reset between experiments, you should fully reset it's docker contains and therefore need to run this script again.
+
+```bash
+# MAKE SERVICE DIRECTORY ARGUMENT MANDATORY
+if [[ -z $1 ]]
+then
+  echo "ERROR: DEFINE THE NUMBER OF TOPIC PARTITIONS";
+  exit 1;
+fi
+
+# INITIALIZE KAFKA TOPICS & WAIT FOR ABIT
+python3 app/kafka_init.py -n $1
+
+# THEN DEPLOY FRESH PODS
+kubectl apply -f yolo_deployment.yaml
+```
+
+```bash
+# FOR EXAMPLE:
+# THIS WILL TEST FOR FIVE TOPIC PARTITIONS
+./03_init_and_deploy.sh 5
+```
 
 <!--
 ```yaml
