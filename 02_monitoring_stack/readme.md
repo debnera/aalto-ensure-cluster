@@ -21,6 +21,17 @@ kubectl wait --for condition=Established --all CustomResourceDefinition --namesp
 kubectl apply -f kube-prometheus/manifests/
 ```
 
+- Once deployed, these services are available inside `Kubernetes`.
+    - `Prometheus` on port 9090.
+    - `Grafana` on port 3000.
+- To make them available through the master node's localhost, use port forwarding:
+
+```bash
+# KUBERNETES SERVICE PORT FORWARDS
+kubectl -n monitoring port-forward svc/grafana 3000
+kubectl -n monitoring port-forward svc/prometheus-k8s 9090
+```
+
 ## 2. DEPLOY KEPLER NODE MONITORS
 
 - Deploy cached (modified) files: [`./02_cached_kepler.sh`](02_cached_kepler.sh)
