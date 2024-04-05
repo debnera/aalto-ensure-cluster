@@ -67,20 +67,79 @@ screen -dmS grafana_proxy ssh -L 3000:localhost:3000 $CLOUD_PROXY
 screen -dmS prometheus_proxy ssh -L 9090:localhost:9090 $CLOUD_PROXY
 ```
 
-## SETUP EXPERIMENT SCREENS
+## 3. SETUP EXPERIMENT SCREENS
 
-#### KAFKA SCREEN
-<!-- ```bash
-# CREATE THE SCREEN
+#### 3.1 KAFKA SCREEN
+---
+
+- Before every new experiment, you should kill your old `Kafka` and create a new one.
+    - This makes sure there are no artifacts left in the topics.
+- To do this, `CTRL+C` and execute the `run script` again.
+
+```bash
+# CREATE THE SCREEN ONCE
 screen -S exp_kafka
 
 # BOOT UP KAFKA FROM DOCKER, LIKE CHAPTER 3 DESCIRBED
-./aalto-ensure/kafka/docker/run.sh
-``` -->
+cd aalto_ensure/kafka/docker
+./run.sh
+```
 
-#### KUBERNETES SCREEN
+#### 3.2 DEPLOYMENT SCREEN
+---
 
-#### FEEDING SCREEN
+- `Kafka` tends to react unpredictably when you push lots of data into a topic that doesn't already exist.
+    - The topic will be created automatically.
+    - Partition assignment may be wonky and slow.
+- To fix this, we run a script that:
+    1. Creates `n` temporary `Kafka` producers and consumers.
+    2. Each producer sends one message to their designated consumer.
+    3. After every consumer confirms, each topic partition has been initialized and tested.
+- Now we can safely deploy our `Kubernetes` pods.
+
+```bash
+# CREATE THE SCREEN ONCE
+screen -S exp_deployment
+
+# THIS WILL TEST FOR FIVE TOPIC PARTITIONS
+./aalto_ensure/04_yolo_consumer/03_init_and_deploy.sh 5
+```
+
+#### 3.3 FEEDING SCREEN
+---
+
+- Before you start, make sure that:
+    - `Kafka` has been deployed successfully.
+    - The `Kubernetes` pods are been deployed successfully.
+        - I confirm this via `Grafana` dashboards.
+- This window must be active for the duration of the experiment.
+    - Once the script is started, suspend the screen with `CTRL+A+D`
+    - Note that you can enter the screen again with `screen -r exp_feeding`
+- By stopping the script with `CTRL+C`, the helper threads die gracefully.
+
+
+```bash
+# CREATE THE SCREEN ONCE
+screen -S exp_feeding
+
+# PATH TO THE RELEVANT DIR
+cd aalto_ensure/05_yolo_producer/app
+```
+
+```bash
+# SET THE FEEDING PARAMETERS
+EXP_DURATION=28800
+EXP_BREAKPOINTS=800
+EXP_MAX_MBPS=14
+EXP_CYCLES=6
+
+# RUN THE SCRIPT
+python3 feeder.py \
+    --duration $EXP_DURATION \
+    --breakpoints $EXP_BREAKPOINTS \
+    --max_mbps $EXP_MAX_MBPS \
+    --n_cycles $EXP_CYCLES
+```
 
 
 
