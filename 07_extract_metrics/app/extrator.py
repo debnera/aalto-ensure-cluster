@@ -3,7 +3,7 @@ import requests, os, time, argparse
 from datetime import datetime
 from threading import Thread, Semaphore
 
-def process_metric(base_path, prometheus_endpoint, query, formatted_start, formatted_end, sampling, thread_lock, tracker):
+def process_metric(base_path: str, prometheus_endpoint: str, query: str, formatted_start: int, formatted_end: int, sampling: int, segment_size: int, thread_lock, tracker):
 
     # CREATE SUB DIR FOR QUERY
     dir_path = f'{base_path}/{query}'
@@ -11,7 +11,7 @@ def process_metric(base_path, prometheus_endpoint, query, formatted_start, forma
 
     # PROMETHEUS ONLY ALLOWS QUERIES WITH LESS THAN 11K ROWS
     # SEGMENT LARGE TIMESTAMPS INTO SMALLER PAIRS TO BYPASS THIS LIMITATION
-    ts_segments = utilz.segment_timestamps(formatted_start, formatted_end, 2000)
+    ts_segments = utilz.segment_timestamps(formatted_start, formatted_end, segment_size)
 
     # LOOP THROUGH EACH SEGMENT, COMBINING THEIR QUERY OUTPUT
     for t1, t2 in ts_segments:
@@ -27,7 +27,7 @@ def process_metric(base_path, prometheus_endpoint, query, formatted_start, forma
     tracker.increment(query)
     thread_lock.release()
 
-def create_snapshot(start_time, end_time, sampling, n_threads):
+def create_snapshot(start_time: str, end_time: str, sampling: int, segment_size: int, n_threads: int):
 
     # GENERATE UNIQUE SNAPSHOT PATH & CREATE DIR FOR IT
     now = str(int(time.time()))
@@ -67,7 +67,8 @@ def create_snapshot(start_time, end_time, sampling, n_threads):
             metric, 
             formatted_start, 
             formatted_end, 
-            sampling, 
+            sampling,
+            segment_size,
             thread_lock, 
             tracker
         ))
@@ -86,6 +87,7 @@ def create_snapshot(start_time, end_time, sampling, n_threads):
             formatted_start, 
             formatted_end, 
             sampling, 
+            segment_size,
             thread_lock, 
             tracker
         ))
@@ -106,8 +108,8 @@ def create_snapshot(start_time, end_time, sampling, n_threads):
     pad_print(['SNAPSHOT PATH:', snapshot_path], 35)
     pad_print(['SNAPSHOT BYTES:', f'{num_bytes} ({num_mbs} MB)'], 35)
 
-##################################################################################################################
-##################################################################################################################
+#############################################################################################################################
+#############################################################################################################################
 
 # create_snapshot('2024-01-24 12:52:00', '2024-01-24 13:52:00', 5)
 # create_snapshot('2024-01-24 01:00:00', '2024-01-24 09:00:00', 5)
@@ -125,6 +127,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-s", "--start", type=str, help="Starting timestamp for the experiment",)
 parser.add_argument("-e", "--end", type=str, help="Ending timestamp for the experiment",)
 parser.add_argument("-r", "--sampling", type=int, help="Sampling rate in seconds",)
+parser.add_argument("-z", "--segment_size", type=int, help="Segment size that Prometheus queries are broken into",)
 parser.add_argument("-t", "--n_threads", type=int, help="Number of concurrent threads to use",)
 
 py_args = parser.parse_args()
@@ -134,5 +137,6 @@ create_snapshot(
     start_time=py_args.start,
     end_time=py_args.end,
     sampling=py_args.sampling,
+    segment_size=py_args.segment_size,
     n_threads=py_args.n_threads
 )

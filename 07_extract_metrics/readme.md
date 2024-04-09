@@ -25,12 +25,49 @@
 - `--n_threads` `(int)`: How many concurrent threads to scrape with.
     - A high value will cause the machine to run out of memory.
     - A low value will cause a very long runtime.
+- `--segment_size` `(int)`: How many data points each individual Prometheus query segment will contain.
+    - Prometheus limit is `~11 000`, but this will cause memory issues.
+    - I generally kept this at `~2000` to be safe.
+    - The "correct" value depends on how many threads you are using.
 
-For example:
 ```bash
+# FOR EXAMPLE
 python3 extractor.py
     --start "2024-01-30 19:10:15"
     --end "2024-01-31 03:10:15"
     --sampling 5
     --n_threads 8
+    --segment_size 2000
+```
+
+## Controlling Memory Usage
+
+- Prometheus is limited to how many data points it can return in one query.
+    - This limit is easy to exceed with small sample rates.
+    - Naturally, large queries require much memory, which is problematic on the `NUC` machines.
+- To address this, the script splits large queries into many smaller segments.
+    - For example, a `1000` second experiment is split into `10*100` second segments.
+- Each segment is saved as its own JSON file, and must be re-assembled retroactively for analysis.
+    - The segments are labeled with a chronological timestamp.
+
+## Filter Metrics
+
+- Most of the scraped metrics are completely irrelevant, but discarding data is:
+    - Dangerous as you might lose critical information you may have not currently realize is important.
+    - Greatly reduces the size of datasets, making it easier to find valuable patterns.
+- If you eventually want to ignore certain metrics, you can either blacklist or whitelist their prefix.
+    - Use logical operators to exclude certain metrics.
+    - Use the `not` to only include certain metrics.
+    - For example:
+        - [`extractor.py #row-44`](`extractor.py#r44`)
+        - [`extractor.py #row-50`](`extractor.py#r50`)
+
+```python
+# EXCLUDE PROMETHEUS_, GRAFANA_ AND ALERTMANAGER_ PREFIXES
+s1_filter = lambda x: x.startswith('prometheus_') or x.startswith('grafana_') or x.startswith('alertmanager_')
+```
+
+```python
+# EXCLUDE EVERYTHING EXCEPT THE KAFKA PREFIX
+s2_filter = lambda x: not x.startswith('kafka_')
 ```
