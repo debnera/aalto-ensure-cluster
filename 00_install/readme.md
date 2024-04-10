@@ -1,3 +1,10 @@
+## Table of Contents
+
+1. [Install the baseline `Ubuntu` dependencies](#)
+2. [Install `Docker`](#)
+3. [Install `Docker-CRI`](#)
+4. [Install the different `Kubernetes` cluster components](#)
+
 ## 1. INSTALL BASELINE UBUNTU DEPENDENCIES
 
 - Script location: [`./00_ubuntu_init.sh`](00_ubuntu_init.sh)

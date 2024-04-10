@@ -179,7 +179,7 @@ resource:
 - The correct answer depends on what energy-strategy the experiment wants to probe.
 
 <p align="center">
-<img src="scaling.png" alt="drawing" width="600"/>
+    <img src="scaling.png" alt="drawing" width="600"/>
 </p>
 
 

@@ -1,6 +1,6 @@
-## OVERVIEW
+## Table of Contents
 
-1. [Create a Kubernetes master node/control plane.](#)
+1. [Create a `Kubernetes` master node/control plane.](#)
 2. [Create worker nodes & add it to the cluster.](#)
 9. [Reset a cluster node & rejoin the cluster.](#)
 

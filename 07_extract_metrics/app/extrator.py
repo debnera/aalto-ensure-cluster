@@ -41,13 +41,13 @@ def create_snapshot(start_time: str, end_time: str, sampling: int, segment_size:
 
     # PROMETHEUS SERVER 1 METRICS
     # FILTER: EXCLUDE PROMETHEUS, GRAFANA AND ALERTMANAGER METRICS
-    s1_filter = lambda x: x.startswith('prometheus_') or x.startswith('grafana_') or x.startswith('alertmanager_')
+    s1_filter = lambda metric: metric.startswith('prometheus_') or metric.startswith('grafana_') or metric.startswith('alertmanager_')
     s1_endpoint = '130.233.193.117:9090'
     s1_metrics = utilz.get_metric_names(s1_endpoint, s1_filter)
 
     # PROMETHEUS SERVER 2 METRICS
     # FILTER: ONLY INCLUDE KAFKA METRICS
-    s2_filter = lambda x: not x.startswith('kafka_')
+    s2_filter = lambda metric: not metric.startswith('kafka_')
     s2_endpoint = '130.233.193.117:9091'
     s2_metrics = utilz.get_metric_names(s2_endpoint, s2_filter)
 

@@ -1,4 +1,20 @@
-## 1. CONNECT TO THE CLUSTER REMOTELY
+## Table of Contents
+
+1. [Subdir Overview (TODO)](#)
+2. [Connect to the Cluster Remotely](#)
+3. [Port forward Monitoring Stack to remote location](#)
+3. [Setup Experiment Screens](#)
+    1. [Kafka Screen](#)
+    2. [Deployment Screen](#)
+    2. [Feeding Screen](#)
+
+<!-- ########################################################################################################## -->
+
+## 1. Subdir Purpose
+
+<!-- ########################################################################################################## -->
+
+## 2. Connect to the Cluster Remotely
 ```bash
 # CONNECT TO THE CLOUD PROXY
 ssh ansure@ansurevm.northeurope.cloudapp.azure.com
@@ -33,7 +49,9 @@ ssh 130.233.193.63
 ssh worker5
 ```
 
-## 2. PORT FORWARD MONITORING STACK TO REMOTE LOCATION
+<!-- ########################################################################################################## -->
+
+## 3. Port forward Monitoring Stack to remote location
 
 - Script location: [`./01_cluster_port_forwards.sh`](01_cluster_port_forwards.sh)
 - Use port forwarding screens to make these services **locally** available through the master node.
@@ -67,9 +85,9 @@ screen -dmS grafana_proxy ssh -L 3000:localhost:3000 $CLOUD_PROXY
 screen -dmS prometheus_proxy ssh -L 9090:localhost:9090 $CLOUD_PROXY
 ```
 
-## 3. SETUP EXPERIMENT SCREENS
+## 4. Setup Experiment Screens
 
-#### 3.1 KAFKA SCREEN
+#### 4.1 Kafka Screen
 ---
 
 - Before every new experiment, you should kill your old `Kafka` and create a new one.
@@ -85,7 +103,7 @@ cd aalto_ensure/kafka/docker
 ./run.sh
 ```
 
-#### 3.2 DEPLOYMENT SCREEN
+#### 4.2 Deployment Screen
 ---
 
 - `Kafka` tends to react unpredictably when you push lots of data into a topic that doesn't already exist.
@@ -105,7 +123,7 @@ screen -S exp_deployment
 ./aalto_ensure/04_yolo_consumer/03_init_and_deploy.sh 5
 ```
 
-#### 3.3 FEEDING SCREEN
+#### 4.3 Feeding Screen
 ---
 
 - Before you start, make sure that:
@@ -134,17 +152,9 @@ EXP_MAX_MBPS=14
 EXP_CYCLES=6
 
 # RUN THE SCRIPT
-python3 feeder.py \
-    --duration $EXP_DURATION \
-    --breakpoints $EXP_BREAKPOINTS \
-    --max_mbps $EXP_MAX_MBPS \
+python3 feeder.py
+    --duration $EXP_DURATION
+    --breakpoints $EXP_BREAKPOINTS
+    --max_mbps $EXP_MAX_MBPS
     --n_cycles $EXP_CYCLES
 ```
-
-
-
-<!--
-```bash
-
-```
--->

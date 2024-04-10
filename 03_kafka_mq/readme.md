@@ -1,3 +1,14 @@
+## Table of Contents
+
+1. [Subdir Overview](#)
+2. [Kafka's Docker Compose](#)
+3. [Customization](#)
+    1. [Shared Broker Vars](#)
+    1. [Unique Broker Vars](#)
+    1. [Prometheus Vars](#)
+
+<!-- ########################################################################################################## -->
+
 ## DIR OVERVIEW
 
 - We will use Kafka to transport data to worker-pods running in Kubernetes.
@@ -8,6 +19,8 @@
     - However, integration with the remaining tech stack was problematic.
     - Instead, we run `Kafka`, `Zookeeper` and a separate `Prometheus` instance externally.
     - Once an experiment has been performed, the data from both `Prometheus` instances (one for Kubernetes, one for Kafka) are aggregated and analyzed together.
+
+<!-- ########################################################################################################## -->
 
 ## KAFKA'S DOCKER COMPOSE
 
@@ -30,6 +43,8 @@ read -p "Press enter to continue..."
 # CREATE NEW CONTAINERS
 docker compose up --force-recreate --renew-anon-volumes --remove-orphans
 ```
+
+<!-- ########################################################################################################## -->
 
 ## SHARED BROKER VARS
 
@@ -59,6 +74,8 @@ x-kafka_env: &kafka_env
   KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
   KAFKA_JMX_OPTS: "-javaagent:/usr/app/jmx_prometheus_javaagent.jar=11001:/usr/app/kafka_scraper.yml"
 ```
+
+<!-- ########################################################################################################## -->
 
 ## UNIQUE BROKER VARS
 
@@ -92,6 +109,8 @@ kafka_broker_2:
         KAFKA_BROKER_ID: 2
         KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka_broker_2:11000,PLAINTEXT_HOST://130.233.193.117:10002
 ```
+
+<!-- ########################################################################################################## -->
 
 ## PROMETHEUS VARS
 

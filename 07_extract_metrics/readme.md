@@ -1,4 +1,14 @@
-## Purpose
+## Table of Contents
+
+1. [Subdir Purpose](#)
+2. [Input Parameters](#)
+3. [Points of Interest](#)
+    1. [Controlling Memory Usage](#)
+    2. [Filter Metrics](#)
+
+<!-- ########################################################################################################## -->
+
+## 1. Subdir Purpose
 
 - `Prometheus` is designed to only store data for a few days before log rotating.
 - After an experiment, we want to extract all data from both `Prometheus` instances for later analysis.
@@ -13,7 +23,9 @@
     - The first version had its own data schema and ended up being way too convoluted.
     - The second and final version extracts and dumps the raw `Prometheus` response data into JSON files.
 
-## Input Parameters
+<!-- ########################################################################################################## -->
+
+## 2. Input Parameters
 
 - `--start` `(str)`: Starting timestamp of the experiment.
 - `--end` `(str)`: Ending timestamp of the experiment.
@@ -40,7 +52,12 @@ python3 extractor.py
     --segment_size 2000
 ```
 
-## Controlling Memory Usage
+<!-- ########################################################################################################## -->
+
+## 3. Points of Interest
+
+### 3.1. Controlling Memory Usage
+---
 
 - Prometheus is limited to how many data points it can return in one query.
     - This limit is easy to exceed with small sample rates.
@@ -50,24 +67,26 @@ python3 extractor.py
 - Each segment is saved as its own JSON file, and must be re-assembled retroactively for analysis.
     - The segments are labeled with a chronological timestamp.
 
-## Filter Metrics
+### 3.2. Filter Metrics
+---
 
 - Most of the scraped metrics are completely irrelevant, but discarding data is:
     - Dangerous as you might lose critical information you may have not currently realize is important.
     - Greatly reduces the size of datasets, making it easier to find valuable patterns.
 - If you eventually want to ignore certain metrics, you can either blacklist or whitelist their prefix.
-    - Use logical operators to exclude certain metrics.
-    - Use the `not` to only include certain metrics.
+    - Wrap the entire expression in a lambda function.
+        - Use logical operators to exclude certain metrics.
+        - Use the `not` to only include certain metrics.
     - For example:
         - [`extractor.py #row-44`](`extractor.py#r44`)
         - [`extractor.py #row-50`](`extractor.py#r50`)
 
 ```python
 # EXCLUDE PROMETHEUS_, GRAFANA_ AND ALERTMANAGER_ PREFIXES
-s1_filter = lambda x: x.startswith('prometheus_') or x.startswith('grafana_') or x.startswith('alertmanager_')
+s1_filter = lambda metric: metric.startswith('prometheus_') or metric.startswith('grafana_') or metric.startswith('alertmanager_')
 ```
 
 ```python
 # EXCLUDE EVERYTHING EXCEPT THE KAFKA PREFIX
-s2_filter = lambda x: not x.startswith('kafka_')
+s2_filter = lambda metric: not metric.startswith('kafka_')
 ```

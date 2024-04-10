@@ -1,3 +1,13 @@
+## Table of Contents
+
+1. [Deploy the `Prometheus` & `Grafana` Monitoring Stack](#)
+2. [Deploy `Kepler` node monitors](#)
+3. [Deploy the `Kubernetes` Metrics Server](#)
+4. [Upload `Grafana` Dashboards](#)
+5. [Setup `Kubernetes` port forwards](#)
+
+<!-- ########################################################################################################## -->
+
 ## 1. DEPLOY PROMETHEUS & GRAFANA MONITORING STACK
 
 - Deploy cached (modified) files: [`./01_cached_monitoring.sh`](01_cached_monitoring.sh)
