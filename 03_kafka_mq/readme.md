@@ -8,7 +8,6 @@
     1. [Prometheus Vars](#)
 
 <!-- ########################################################################################################## -->
-
 ## DIR OVERVIEW
 
 - We will use Kafka to transport data to worker-pods running in Kubernetes.
@@ -21,7 +20,6 @@
     - Once an experiment has been performed, the data from both `Prometheus` instances (one for Kubernetes, one for Kafka) are aggregated and analyzed together.
 
 <!-- ########################################################################################################## -->
-
 ## KAFKA'S DOCKER COMPOSE
 
 - The docker-compose file: `docker-compose.yaml`:
@@ -45,7 +43,6 @@ docker compose up --force-recreate --renew-anon-volumes --remove-orphans
 ```
 
 <!-- ########################################################################################################## -->
-
 ## SHARED BROKER VARS
 
 - The Kafka brokers share most variable values.
@@ -76,7 +73,6 @@ x-kafka_env: &kafka_env
 ```
 
 <!-- ########################################################################################################## -->
-
 ## UNIQUE BROKER VARS
 
 - However, the following variable values must be unique for each broker:
@@ -111,7 +107,6 @@ kafka_broker_2:
 ```
 
 <!-- ########################################################################################################## -->
-
 ## PROMETHEUS VARS
 
 - You can permanently store the prometheus' data on-disk.

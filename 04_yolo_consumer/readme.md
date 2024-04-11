@@ -12,6 +12,7 @@
     6. [Define how often Kubernetes is allowed to scale up/down](#)
 5. [Initialize Kafka topics & deploy consumer pods](#)
 
+<!-- ########################################################################################################## -->
 ## 1. PROGRAM THE YOLO PROCESSOR
 
 - Relevant files:
@@ -27,7 +28,7 @@
     4. If toggled, the `Yolo` inference statistics are sent to another Kafka topic (`yolo_output`).
     5. Repeat until manually killed.
 
-
+<!-- ########################################################################################################## -->
 #### 1.1. DEFINE PROCESSOR PARAMS
 ```bash
 args = {
@@ -43,6 +44,7 @@ args = {
 }
 ```
 
+<!-- ########################################################################################################## -->
 ## 2. CREATE A STANDALONE DOCKER IMAGE
 
 - Script location: [`./01_build_and_test.sh`](01_build_and_test.sh)
@@ -64,6 +66,7 @@ docker build --no-cache -t workload_consumer -f consumer.Dockerfile .
 docker run workload_consumer
 ```
 
+<!-- ########################################################################################################## -->
 ## 3. MAKE THE DOCKER IMAGE PUBLICALLY AVAILABLE
 
 - Script location: [`./02_refresh_image.sh`](02_refresh_image.sh)
@@ -90,12 +93,14 @@ docker tag workload_consumer:latest $MY_GIT_USERNAME/workload_consumer:latest
 docker push $MY_GIT_USERNAME/workload_consumer:latest
 ```
 
+<!-- ########################################################################################################## -->
 ## 4. CONFIGURE THE KUBERNETES DEPLOYMENT
 
 - File location: [`yolo_deployment.yaml`](yolo_deployment.yaml)
 - Now that we have a `Docker` image, we need to configure how Kubernetes should treat it.
 - Here are some central points of interest:
 
+<!-- ########################################################################################################## -->
 #### 4.1. DEFINE THE DOCKER IMAGE
 ```yaml
 # DEFINE THE DOCKERHUB LOCATION OF YOUR IMAGE
@@ -106,6 +111,7 @@ image: wickstjo/workload_consumer:latest
 imagePullPolicy: Always
 ```
 
+<!-- ########################################################################################################## -->
 #### 4.2. OVERRIDE YOLO PROCESSOR ARGS
 
 ```yaml
@@ -129,6 +135,7 @@ imagePullPolicy: Always
     - Use the capital string representation of either `TRUE` or `FALSE`.
     - Use the string name of the models in `app/models`, no suffix needed.
 
+<!-- ########################################################################################################## -->
 #### 4.3. DEFINE MIN/MAX RESOURCE THRESHOLD PER POD
 
 ```yaml
@@ -151,6 +158,7 @@ requests:
     - High values (2K+) have been quite stable.
     - Difficult to trace why.
 
+<!-- ########################################################################################################## -->
 #### 4.4. DEFINE MIN/MAX POD COUNT
 
 ```yaml
@@ -161,6 +169,7 @@ maxReplicas: 34
 - This property goes hand-in-hand with resource limits.
 - The minimum values should be at least 1, while the maximum value can technically be infinite, even if `(max_pods * min_pod_resource) > cluster_total_resources`
 
+<!-- ########################################################################################################## -->
 #### 4.5. DEFINE WHEN PODS SHOULD BE CREATED/DESTROYED
 
 ```yaml
@@ -182,7 +191,7 @@ resource:
     <img src="scaling.png" alt="drawing" width="600"/>
 </p>
 
-
+<!-- ########################################################################################################## -->
 #### 4.6: DEFINE HOW OFTEN KUBERENTES IS ALLOWED TO SCALE UP/DOWN
 
 ```yaml

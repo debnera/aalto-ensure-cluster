@@ -11,11 +11,11 @@
     3. [Worker threads](#)
 
 <!-- ########################################################################################################## -->
-
 ## Subdir Overview
 
-<!-- ########################################################################################################## -->
 
+
+<!-- ########################################################################################################## -->
 ## Input Parameters
 
 1. `--max_mbps` (`int`): What the maximum cumulative MB/s of the script should be.
@@ -39,8 +39,7 @@ python3 app/feeder.py
     --n_cycles 6
 ```
 
-<!-- ############################################################################ -->
-
+<!-- ########################################################################################################## -->
 ## 24H DAY-NIGHT CYCLE
 
 - 24 percentage values, each representying the workload % of that hour.
@@ -51,8 +50,6 @@ python3 app/feeder.py
 - This essentially just smoothens the curve of the workload growing/shrinking.
     - Arguably makes the traffic data more realistic.
     - Allows kubernetes to scale more gradually.
-
-<!-- ############################################################################ -->
 
 #### DEFAULT CYCLE
 ```python
@@ -80,14 +77,14 @@ python3 app/feeder.py
 ]
 ```
 
-<!-- ############################################################################ -->
-
+<!-- ########################################################################################################## -->
 ## FEEDING LOGIC
 
 <p align="center">
     <img src="architecture.png" alt="drawing" width="600"/>
 </p>
 
+<!-- ########################################################################################################## -->
 ### MAIN THREAD
 ---
 
@@ -101,6 +98,7 @@ python3 app/feeder.py
 7. Creates a coordinating thread.
 8. Wait for both thread types to die.
 
+<!-- ########################################################################################################## -->
 ### COORDINATING THREAD
 ---
 
@@ -117,6 +115,7 @@ python3 app/feeder.py
     4. Wait until the next breakpoint.
     5. Repeat until the experiment ends.
 
+<!-- ########################################################################################################## -->
 ### WORKER THREADS
 ---
 

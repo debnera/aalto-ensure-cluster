@@ -7,7 +7,6 @@
     2. [Filter Metrics](#)
 
 <!-- ########################################################################################################## -->
-
 ## 1. Subdir Purpose
 
 - `Prometheus` is designed to only store data for a few days before log rotating.
@@ -24,7 +23,6 @@
     - The second and final version extracts and dumps the raw `Prometheus` response data into JSON files.
 
 <!-- ########################################################################################################## -->
-
 ## 2. Input Parameters
 
 - `--start` `(str)`: Starting timestamp of the experiment.
@@ -53,9 +51,9 @@ python3 extractor.py
 ```
 
 <!-- ########################################################################################################## -->
-
 ## 3. Points of Interest
 
+<!-- ########################################################################################################## -->
 ### 3.1. Controlling Memory Usage
 ---
 
@@ -67,6 +65,7 @@ python3 extractor.py
 - Each segment is saved as its own JSON file, and must be re-assembled retroactively for analysis.
     - The segments are labeled with a chronological timestamp.
 
+<!-- ########################################################################################################## -->
 ### 3.2. Filter Metrics
 ---
 

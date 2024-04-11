@@ -4,6 +4,7 @@
 2. [Create worker nodes & add it to the cluster.](#)
 9. [Reset a cluster node & rejoin the cluster.](#)
 
+<!-- ########################################################################################################## -->
 ## 1. CREATE A KUBERNETES MASTER NODE
 
 - Script location: [`./01_master_node.sh`](01_master_node.sh)
@@ -53,6 +54,7 @@ kubectl get pods -A --watch
 kubeadm token create --print-join-command
 ```
 
+<!-- ########################################################################################################## -->
 ## 2. CREATE A KUBERNETES WORKER NODE
 
 - Script location: [`./02_worker_node.sh`](02_worker_node.sh)
@@ -81,6 +83,7 @@ kubeadm join $MASTER_IP:6443 \
     --cri-socket=unix:///var/run/cri-dockerd.sock
 ```
 
+<!-- ########################################################################################################## -->
 ## 99. RESET CLUSTER NODE & REJOIN
 
 - Script location: [`./99_reset_node.sh`](99_reset_node.sh)

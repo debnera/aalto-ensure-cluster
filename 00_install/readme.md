@@ -5,6 +5,7 @@
 3. [Install `Docker-CRI`](#)
 4. [Install the different `Kubernetes` cluster components](#)
 
+<!-- ########################################################################################################## -->
 ## 1. INSTALL BASELINE UBUNTU DEPENDENCIES
 
 - Script location: [`./00_ubuntu_init.sh`](00_ubuntu_init.sh)
@@ -18,6 +19,7 @@ sudo apt-get install -y openssh-server openssh-client
 sudo apt-get install -y nano git wget curl make gh net-tools make
 ```
 
+<!-- ########################################################################################################## -->
 ## 2. INSTALL DOCKER
 
 - Script location: [`./01_docker.sh`](01_docker.sh)
@@ -45,6 +47,7 @@ docker version
 sudo docker run hello-world
 ```
 
+<!-- ########################################################################################################## -->
 ## 3. INSTALL DOCKER-CRI (ALLOWS KUBERNETES TO USE DOCKER)
 
 - Script location: [`./02_docker_cri.sh`](02_docker_cri.sh)
@@ -86,6 +89,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now cri-docker.socket
 ```
 
+<!-- ########################################################################################################## -->
 ## 4. INSTALL KUBERNETES COMPONENTS
 
 - Script location: [`./03_kube_systems.sh`](03_kube_systems.sh)
