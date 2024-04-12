@@ -1,13 +1,4 @@
-## Table of Contents
-
-1. [Subdir Purpose](#)
-2. [Input Parameters](#)
-3. [Points of Interest](#)
-    1. [Controlling Memory Usage](#)
-    2. [Filter Metrics](#)
-
-<!-- ########################################################################################################## -->
-## 1. Subdir Purpose
+## Overview
 
 - `Prometheus` is designed to only store data for a few days before log rotating.
 - After an experiment, we want to extract all data from both `Prometheus` instances for later analysis.
@@ -23,7 +14,16 @@
     - The second and final version extracts and dumps the raw `Prometheus` response data into JSON files.
 
 <!-- ########################################################################################################## -->
-## 2. Input Parameters
+## Table of Contents
+
+1. [Subdir Purpose](#)
+2. [Input Parameters](#)
+3. [Points of Interest](#)
+    1. [Controlling Memory Usage](#)
+    2. [Filter Metrics](#)
+
+<!-- ########################################################################################################## -->
+## 1. Input Parameters
 
 - `--start` `(str)`: Starting timestamp of the experiment.
 - `--end` `(str)`: Ending timestamp of the experiment.
@@ -51,10 +51,10 @@ python3 extractor.py
 ```
 
 <!-- ########################################################################################################## -->
-## 3. Points of Interest
+## 2. Points of Interest
 
 <!-- ########################################################################################################## -->
-### 3.1. Controlling Memory Usage
+### 2.1. Controlling Memory Usage
 ---
 
 - Prometheus is limited to how many data points it can return in one query.
@@ -66,7 +66,7 @@ python3 extractor.py
     - The segments are labeled with a chronological timestamp.
 
 <!-- ########################################################################################################## -->
-### 3.2. Filter Metrics
+### 2.2. Filter Metrics
 ---
 
 - Most of the scraped metrics are completely irrelevant, but discarding data is:

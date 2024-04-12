@@ -1,3 +1,12 @@
+## Overview
+
+- Deploy systems that allow close monitoring of the cluster's resources:
+    - `Prometheus` for scraping and temporarily storing metrics data.
+    - `Grafana` for observing the metrics in near-real time through customizable dashboards.
+- Deploy `Kepler` modules on each cluster node, allowing the tracking of energy usage.
+- Deploy a `Kubernetes Metrics Server` to allow the cluster to dynamically scale pods.
+
+<!-- ########################################################################################################## -->
 ## Table of Contents
 
 1. [Deploy the `Prometheus` & `Grafana` Monitoring Stack](#)

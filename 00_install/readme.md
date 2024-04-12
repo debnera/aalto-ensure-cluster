@@ -1,5 +1,16 @@
-## Table of Contents
+## Overview
 
+- Technically many Linux distros could work
+- `Kepler` requires very specific kernel versions.
+- `Ubuntu` is exceptionally heavy, and there are almost certainly better choices.
+    - We tried `CentOS`, but it did not work out.
+- Kubernetes clusters require multiple components:
+    - `Kubelet`
+    - `KubeADM`
+    - `KubeCTL`
+
+<!-- ########################################################################################################## -->
+## Table of Contents
 1. [Install the baseline `Ubuntu` dependencies](#)
 2. [Install `Docker`](#)
 3. [Install `Docker-CRI`](#)

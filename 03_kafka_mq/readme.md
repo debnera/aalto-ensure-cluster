@@ -1,14 +1,4 @@
-## Table of Contents
-
-1. [Subdir Overview](#)
-2. [Kafka's Docker Compose](#)
-3. [Customization](#)
-    1. [Shared Broker Vars](#)
-    1. [Unique Broker Vars](#)
-    1. [Prometheus Vars](#)
-
-<!-- ########################################################################################################## -->
-## DIR OVERVIEW
+## Overview
 
 - We will use Kafka to transport data to worker-pods running in Kubernetes.
 - Tracking Kafka's performance is imperative for assessing experiments.
@@ -18,6 +8,15 @@
     - However, integration with the remaining tech stack was problematic.
     - Instead, we run `Kafka`, `Zookeeper` and a separate `Prometheus` instance externally.
     - Once an experiment has been performed, the data from both `Prometheus` instances (one for Kubernetes, one for Kafka) are aggregated and analyzed together.
+
+<!-- ########################################################################################################## -->
+## Table of Contents
+
+1. [Kafka's Docker Compose](#)
+2. [Customization](#)
+    1. [Shared Broker Vars](#)
+    2. [Unique Broker Vars](#)
+    3. [Prometheus Vars](#)
 
 <!-- ########################################################################################################## -->
 ## KAFKA'S DOCKER COMPOSE

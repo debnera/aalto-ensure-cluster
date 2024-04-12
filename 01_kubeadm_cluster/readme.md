@@ -1,3 +1,10 @@
+## Overview
+
+- Create a master node, or control plane, that allows other nodes to join the cluster.
+- Create worker nodes and add them to the cluster.
+- Demonstrate how to reset a node.
+
+<!-- ########################################################################################################## -->
 ## Table of Contents
 
 1. [Create a `Kubernetes` master node/control plane.](#)
