@@ -1,6 +1,17 @@
 ## Overview
 
-TODO
+- Create a `Python` program that extracts messages from a `Kafka` topic.
+    - The input data consists of serialized image matricies.
+    - The next chapter (5) will detail how to control the input interval.
+- The images are analyzed with a `Yolo` model to identify objects.
+    - The directory contains multiple different models.
+    - The inference duration grows quite sharply per model.
+    - Read more: https://www.v7labs.com/blog/yolo-object-detection
+- We `Dockerize` the program and upload it to a public image repository.
+    - This enables its usage on `Kubernetes`.
+    - This repo includes a deployment configuration for processing pods.
+- This inference process is designed to induce a relatively realistic workload for the cluster.
+- Conducted experiments have been able to exhaustively use the clusters CPU resource.
 
 <!-- ########################################################################################################## -->
 ## Table of Contents

@@ -1,6 +1,19 @@
 ## Overview
 
-TODO
+- The prior chapters have already defined all the necessary components for conducting your own experiments.
+    - Install dependencies.
+    - Create the cluster.
+    - Deploy the monitoring stack.
+    - Deploy Kafka.
+    - Deploy Yolo consumers.
+    - Start the data producer.
+- However, managing all of these components can get quite tedious.
+    - By reducing the amount of annoyance obstacles, you are more likely to conduct more experiments.
+- To increase your quality of life, this chapter shows you how to:
+    - Connect to the cluster remotely from home.
+    - Create suspendable terminal `screens` for each component.
+        - Regardless of where you are physuically located, you can always use the same screens.
+        - Thus, you only need to setup your environment once.
 
 <!-- ########################################################################################################## -->
 ## Table of Contents

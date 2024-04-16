@@ -1,6 +1,14 @@
 ## Overview
 
-TODO
+- A multi-threaded `Python` script that controls the interval at which data is fed into a `Kafka` topic.
+    - The data itself is read from a `HDFS` dataset, consisting of serialized image matricies.
+- The feeding methodology is based on a realistic 24h traffic cycle.
+    - Peaks around 08 and 17, and then gradually tapering off.
+        - Each hour is represented by a workload percentage value.
+        - The percentages are scaled based on a maximum throughput value, defined as an input parameter.
+    - The default 24h cycle can be stretched to `n` values, resulting in a smoother curve.
+- A full experiment can consist of multiple repeated 24h cycles.
+    - The temporal duration for each cycle is scaled based on the experiment's duration.
 
 <!-- ########################################################################################################## -->
 ## Table of Contents
