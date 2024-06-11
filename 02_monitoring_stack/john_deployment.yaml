@@ -126,12 +126,11 @@ data:
   METRIC_PATH: /metrics
   MODEL_CONFIG: "NODE_COMPONENTS_ESTIMATOR=true\nNODE_COMPONENTS_INIT_URL=https://raw.githubusercontent.com/sustainable-computing-io/kepler-model-db/main/models/v0.6/nx12/std_v0.6/rapl/AbsPower/BPFOnly/GradientBoostingRegressorTrainer_1.zip\nNODE_TOTAL_ESTIMATOR=true\nNODE_TOTAL_INIT_URL=https://raw.githubusercontent.com/sustainable-computing-io/kepler-model-db/main/models/v0.6/nx12/std_v0.6/acpi/AbsPower/BPFOnly/GradientBoostingRegressorTrainer_1.zip
     \ \n"
-
-  ###############################################################################
-  # HOW OFTEN SHOULD KEPLER THE SCRAPED?
+  
+  #######################################################################################
   PROMETHEUS_SCRAPE_INTERVAL: 5s
-  ###############################################################################
-
+  #######################################################################################
+  
   REDFISH_PROBE_INTERVAL_IN_SECONDS: "60"
   REDFISH_SKIP_SSL_VERIFY: "true"
 kind: ConfigMap
@@ -210,7 +209,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
-        image: quay.io/sustainable_computing_io/kepler:release-0.7.7
+        image: quay.io/sustainable_computing_io/kepler:latest
         imagePullPolicy: Always
         livenessProbe:
           failureThreshold: 5
@@ -226,10 +225,10 @@ spec:
         ports:
         - containerPort: 9102
           name: http
-#        resources:
-#          requests:
-#            cpu: 100m
-#            memory: 400Mi
+          #resources:
+          #  requests:
+          #    cpu: 100m
+          #    memory: 400Mi
         securityContext:
           privileged: true
         volumeMounts:
@@ -305,12 +304,9 @@ metadata:
   namespace: monitoring
 spec:
   endpoints:
-
-  ###############################################################################
-  # NEEDS TO BE SAME AS ABOVE?
+###############################################################
   - interval: 5s
-  ###############################################################################
-
+###############################################################
     port: http
     relabelings:
     - action: replace
