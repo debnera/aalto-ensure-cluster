@@ -17,6 +17,34 @@
 - After an experiment concludes, create datasets from the generated metrics data in `Prometheus`.
 - Attempt to find patterns and correlations from these datasets.
 
+## Errata
+Compared to the original repository by John, we have fixed:
+
+- Kepler fails to launch, because it tries to use the 'latest' version instead of some old version.
+-- Something has changed in the latest versions, causing Kepler to fail to launch with old configuration files.
+-- Fixed by setting Kepler to use some older version (TODO: Try to find the exact latest version which works)
+-- This was with the "cached kepler", maybe "fresh kepler" would have worked without changes. However, does this also reset configs?
+
+- Add more flexibility to which cloud service is used for remote work
+-- e.g., use environment variable $CLOUD which can be set in the user's .bashrc to automatically load it.
+
+- Add more helper scripts to make management easier
+
+- Small adjustments to scripts
+-- extractor.py was slightly broken with imports (pad_print not imported from utilz.py)
+-- data feeder script was slightly broken (typo in code)
+
+## Kube basics
+
+kubectl get nodes -o wide
+kubectl get pods -A -o wide
+kubectl logs 
+kubectl logs yolo-consumer-fb5b465df-jchkv -n workload  # get stdout for a specific pod under namespace 'workload'
+
+screen -ls  # list screens from current user
+sudo ls -laR /var/run/screen/  # List all screens running from all users
+
+
 <!-- ########################################################################################################## -->
 ## Table of Contents (sub dirs)
 
