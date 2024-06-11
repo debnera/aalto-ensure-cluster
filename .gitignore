@@ -1,0 +1,8 @@
+# Our custom scripts
+*.token
+
+# Python-specific
+*.pyc
+
+# IDE-specific
+.idea
