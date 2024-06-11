@@ -100,7 +100,7 @@ def run():
             0.558,  0.704,  0.85,   0.7625, 0.675,  0.587,
             0.5,    0.59,   0.68,   0.77,   0.86,   0.97,
             0.813,  0.656,  0.5,    0.343,  0.186,  0.03
-        ] * pyargs.n_cycles
+        ] * py_args.n_cycles
 
         # SCALE THE ARRAY WHILE MAINTAINING RATIOS
         real_cycle = resize_array(
