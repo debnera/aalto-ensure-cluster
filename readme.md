@@ -17,7 +17,7 @@
 - After an experiment concludes, create datasets from the generated metrics data in `Prometheus`.
 - Attempt to find patterns and correlations from these datasets.
 
-## Errata
+## Changelog
 Compared to the original repository by John, we have fixed:
 
 - Kepler fails to launch, because it tries to use the 'latest' version instead of some old version.
@@ -34,15 +34,23 @@ Compared to the original repository by John, we have fixed:
 -- extractor.py was slightly broken with imports (pad_print not imported from utilz.py)
 -- data feeder script was slightly broken (typo in code)
 
-## Kube basics
+## Some basic commands to get started
 
-kubectl get nodes -o wide
-kubectl get pods -A -o wide
-kubectl logs 
-kubectl logs yolo-consumer-fb5b465df-jchkv -n workload  # get stdout for a specific pod under namespace 'workload'
+`kubectl get nodes -o wide`  # list all connected workers
 
-screen -ls  # list screens from current user
-sudo ls -laR /var/run/screen/  # List all screens running from all users
+`kubectl get pods -A -o wide`  # list all pods running on all workers
+
+`kubectl logs`   # get stdout for specific pod
+
+`kubectl logs yolo-consumer-fb5b465df-jchkv -n workload`  # get stdout for a specific pod under namespace 'workload'
+
+`kubectl apply application.yaml`  # deploy application (automatically creates pods on workers)
+
+`kubectl delete -f application.yaml`  # undeploy application (automatically terminates pods)
+
+`screen -ls`  # list screens from current user
+
+`sudo ls -laR /var/run/screen/`  # List all screens running from all users
 
 
 <!-- ########################################################################################################## -->
