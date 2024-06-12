@@ -12,4 +12,4 @@ sleep 5
 read -p "KAFKA TOPICS READY, PRESS ENTER TO DELOY PODS..."
 
 # THEN DEPLOY FRESH PODS
-kubectl apply -f yolo_depl.yaml
+kubectl apply -f yolo_deployment.yaml
