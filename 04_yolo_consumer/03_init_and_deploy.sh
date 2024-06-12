@@ -2,6 +2,7 @@
 if [[ -z $1 ]]
 then
   echo "ERROR: DEFINE THE NUMBER OF TOPIC PARTITIONS";
+  echo "Example: ./03_init_and_deploy.sh 5"
   exit 1;
 fi
 
