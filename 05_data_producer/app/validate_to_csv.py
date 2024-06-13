@@ -102,7 +102,7 @@ class Validator:
         ########################################################################################
 
         # CREATE KAFKA CLIENTS
-        kafka_consumer = create_consumer(args['input_topic'])
+        kafka_consumer = create_consumer(args.input_topic)
         thread_lock = create_lock()
 
         # MAKE SURE KAFKA CONNECTIONS ARE OK
