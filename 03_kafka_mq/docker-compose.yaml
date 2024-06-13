@@ -34,6 +34,8 @@ services:
       ZOOKEEPER_SYNC_LIMIT: 2
     ports:
       - 2181:2181
+    networks:
+      - proxynet
 
   # FIRST BROKER
   kafka_broker_1:
@@ -45,6 +47,8 @@ services:
       KAFKA_BROKER_ID: 1
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka_broker_1:11000,PLAINTEXT_HOST://130.233.193.117:10001
       # KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka_broker_1:11000,PLAINTEXT_HOST://localhost:10001
+    networks:
+      - proxynet
 
   # SECOND BROKER
   kafka_broker_2:
@@ -56,6 +60,8 @@ services:
       KAFKA_BROKER_ID: 2
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka_broker_2:11000,PLAINTEXT_HOST://130.233.193.117:10002
       # KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka_broker_2:11000,PLAINTEXT_HOST://localhost:10002
+    networks:
+      - proxynet
 
   # THIRD BROKER
   kafka_broker_3:
@@ -67,6 +73,8 @@ services:
       KAFKA_BROKER_ID: 3
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka_broker_3:11000,PLAINTEXT_HOST://130.233.193.117:10003
       # KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka_broker_3:11000,PLAINTEXT_HOST://localhost:10003
+    networks:
+      - proxynet
 
 ############################################################################################
 ############################################################################################
@@ -84,3 +92,9 @@ services:
       - '9091:9090'
     command:
       - '--config.file=/etc/prometheus/config.yml'
+    networks:
+      - proxynet
+
+networks:
+  proxynet:
+    name: local_kafka_network

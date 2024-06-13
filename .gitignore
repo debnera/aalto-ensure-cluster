@@ -6,3 +6,6 @@
 
 # IDE-specific
 .idea
+
+# Local Kafka DB
+03_kafka_mq/db_prometheus/

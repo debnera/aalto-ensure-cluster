@@ -2,6 +2,7 @@ import os
 
 from utilz.kafka_utils import create_consumer
 from utilz.misc import custom_deserializer, log, create_lock
+from prometheus_client import Counter, Histogram, start_http_server
 import pandas as pd
 import json, copy
 import argparse
@@ -20,6 +21,13 @@ parser.add_argument("--output_path", type=str,
                     help="Results will be saved to this directory",
                     default="./yolo_outputs/")
 args = parser.parse_args()
+
+# PROMETHEUS METRICS
+yolo_count = Counter('yolo_requests_received', 'Number of processed yolo jobs')
+yolo_pre_time = Histogram('yolo_pre_time', 'Job pre-processing time in seconds')
+yolo_inference_time = Histogram('yolo_inference_time', 'Job inference time in seconds')
+yolo_post_time = Histogram('yolo_post_time', 'Job post-processing time in seconds')
+# yolo_inference_time = Histogram('yolo_inference_time', 'Job processing time in seconds')
 
 class Validator:
 
@@ -63,6 +71,13 @@ class Validator:
         inf = yolo_results['timestamps']['inf']
         post = yolo_results['timestamps']['post']
 
+        # PUBLISH PROMETHEUS STATISTICS
+        yolo_count.inc()
+        yolo_pre_time.observe(pre)
+        yolo_inference_time.observe(inf)
+        yolo_post_time.observe(post)
+
+        # CREATE NEW CSV ROW
         self.data_rows.append({
             'source': source,
             'model': model,
@@ -140,6 +155,7 @@ class Validator:
 
 
 if __name__ == '__main__':
+    start_http_server(8000)
     validator = Validator()
     validator.run()
     #validator.save_to_csv([{"a":1, "b":1},{"a":2, "b":2}])
