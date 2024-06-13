@@ -2,8 +2,8 @@ from prometheus_client import Counter, Histogram, start_http_server
 import time
 
 # Create metrics
-job_count = Counter('my_app_jobs_received', 'Number of received jobs')
-job_processing_time = Histogram('my_app_job_processing_time_seconds', 'Job processing time in seconds')
+job_count = Counter('yolo_requests_received', 'Number of received jobs')
+job_processing_time = Histogram('yolo_inference_time', 'Job processing time in seconds')
 
 def process_job():
     # Simulate job processing
