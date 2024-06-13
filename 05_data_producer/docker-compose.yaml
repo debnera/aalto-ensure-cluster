@@ -1,0 +1,14 @@
+version: '3.7'
+services:
+  yolo_validator:
+    build: ./app
+    networks:
+      - proxynet
+    volumes:
+      - ./app/yolo_outputs:/yolo_outputs
+
+networks:
+  proxynet:
+    name: local_kafka_network
+    external: true
+

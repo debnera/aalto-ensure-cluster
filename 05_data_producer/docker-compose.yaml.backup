@@ -1,0 +1,12 @@
+version: '3.7'
+services:
+  yolo_mockup:
+    build: .
+    networks:
+      - proxynet
+
+networks:
+  proxynet:
+    name: local_kafka_network
+    external: true
+

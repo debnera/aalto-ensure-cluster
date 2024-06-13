@@ -22,6 +22,7 @@ parser.add_argument("--output_path", type=str,
                     default="./yolo_outputs/")
 args = parser.parse_args()
 
+# PROMETHEUS METRICS
 yolo_count = Counter('yolo_requests_received', 'Number of processed yolo jobs')
 yolo_pre_time = Histogram('yolo_pre_time', 'Job pre-processing time in seconds')
 yolo_inference_time = Histogram('yolo_inference_time', 'Job inference time in seconds')
