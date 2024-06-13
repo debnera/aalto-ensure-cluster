@@ -30,7 +30,7 @@ spec:
 
           # VALIDATE YOLO RESULTS OR NOT?
           - name: VALIDATE_RESULTS
-            value: "FALSE"
+            value: "TRUE"
 
           # DEFINE WHAT YOLO MODEL TO USE
           - name: YOLO_MODEL

@@ -1,9 +1,9 @@
 confluent-kafka
 Pillow
-torch
-opencv-python
-ultralytics
+
 bezier
+pandas
+matplotlib
 
 gitpython
 gitdb
