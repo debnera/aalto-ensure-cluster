@@ -52,7 +52,7 @@ class Validator:
         # FINALLY, PRINT THE FINDINGS
         print(json.dumps(response, indent=4))
 
-    def process_event(self, raw_bytes):
+    def process_event(self, raw_bytes, nth_thread):
 
         # SERIALIZE THE YOLO RESULTS
         yolo_results = custom_deserializer(raw_bytes)
@@ -82,7 +82,6 @@ class Validator:
         # PUSH YOLO RESULTS
         self.history[source]['pre'][next_index] = pre
         self.history[source]['inf'][next_index] = inf
-        self.history[source]['post'][next_index] = post
 
         # INCREMENT LOCAL & GLOBAL COUNTERS
         self.history[source]['n'] += 1
