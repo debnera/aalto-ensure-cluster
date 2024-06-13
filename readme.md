@@ -52,6 +52,15 @@ Compared to the original repository by John, we have fixed:
 
 `sudo ls -laR /var/run/screen/`  # List all screens running from all users
 
+## Unknown things
+
+- Why is local kafka (that is used in the experiment) consuming significant amount of master node CPU while idling?
+  - Seems to be linked to Prometheus2 scraping (interval is set to 1s)
+  - 5s interval consumes significantly less resources
+  - The culprits are three Java-processes running under wickstjo
+    - For some reason they run under wickstjo, even if launched by someone else...?
+- How to use Kepler model server?
+- How to add custom things to prometheus / grafana? (e.g., experiment tracker output from python script)
 
 <!-- ########################################################################################################## -->
 ## Table of Contents (sub dirs)
