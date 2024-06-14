@@ -4,6 +4,7 @@ Pillow
 bezier
 pandas
 matplotlib
+prometheus_client
 
 gitpython
 gitdb

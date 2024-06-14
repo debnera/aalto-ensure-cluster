@@ -4,6 +4,6 @@ ADD requirements.txt .
 RUN pip install -r requirements.txt
 
 FROM base
-ADD utilz .
+ADD utilz ./utilz
 ADD validate_to_csv.py .
 ENTRYPOINT ["python", "./validate_to_csv.py"]

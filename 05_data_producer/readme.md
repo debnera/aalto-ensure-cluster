@@ -1,4 +1,22 @@
-## Overview
+# Yolo validator overview
+Yolo validator is a container running on the same docker network as the local kafka
+and Prometheus2 instance. This allows it to publish statistics about Yolo inference
+to the Prometheus.
+
+This makes it possible to use grafana/prometheus to see how the yolo-consumers are 
+performing during the experiment.
+
+Yolo validator also saves statistics of Yolo results in csv-files for later analysis.
+This might provide more accurate information than what we get from the aggregated
+prometheus statistics.
+
+TODO:
+- Could be wise to upload statistics to prometheus directly from the Yolo-consumers 
+  - Then we could push data to the prometheus running on kubernetes
+- Each image-kafka-message should also include a timestamp
+  - Then we can see the total end-to-end processing time for each image
+
+# Data feeder overview
 
 - A multi-threaded `Python` script that controls the interval at which data is fed into a `Kafka` topic.
     - The data itself is read from a `HDFS` dataset, consisting of serialized image matricies.

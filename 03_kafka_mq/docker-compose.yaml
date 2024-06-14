@@ -95,15 +95,6 @@ services:
     networks:
       - proxynet
 
-  yolo_mockup:
-    build: .
-#    ports:
-#      - '8000:8000'
-#    network_mode: "host"
-#    command:
-#      - '-s localhost:10001,localhost:10002,localhost:10003'
-#      - '-m custom-20k'
-
 networks:
   proxynet:
     name: local_kafka_network

@@ -1,9 +1,0 @@
-FROM python:3.8.18 as base
-LABEL authors="anton"
-ADD requirements.txt .
-RUN pip install -r requirements.txt
-
-FROM base
-ADD validate_to_csv.py .
-ADD utilz .
-ENTRYPOINT ["python", "./validate_to_csv.py"]

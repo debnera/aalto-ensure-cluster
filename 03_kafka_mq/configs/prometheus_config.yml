@@ -15,4 +15,4 @@ scrape_configs:
     metrics_path: /
     static_configs:
       - targets:
-          - yolo_mockup:8000
+          - yolo_validator:8000
