@@ -108,7 +108,7 @@ class Validator:
 
         if len(self.data_rows) % args.save_interval == 0:
             self.save_to_csv(self.data_rows)
-            data_rows = []
+            self.data_rows.clear()
 
     def run(self):
 
