@@ -8,8 +8,7 @@ scrape_configs:
     static_configs:
       - targets:
           - kafka_broker_1:11001
-          - kafka_broker_2:11001
-          - kafka_broker_3:11001
+
   # KAFKA BROKER SCRAPERS
   - job_name: yolo
     metrics_path: /

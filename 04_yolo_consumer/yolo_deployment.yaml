@@ -4,13 +4,13 @@ metadata:
   labels:
     pod-security.kubernetes.io/warn: privileged
     pod-security.kubernetes.io/warn-version: latest
-  name: workload
+  name: workloadb
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: yolo-consumer
-  namespace: workload
+  namespace: workloadb
 spec:
   selector:
     matchLabels:
@@ -21,8 +21,8 @@ spec:
         run: yolo-consumer
     spec:
       containers:
-      - name: yolo-consumer
-        image: wickstjo/workload_consumer:latest
+      - name: yolo-consumer-roope
+        image: roopekettunen/workload_consumer:latest
         imagePullPolicy: Always
         ports:
           - containerPort: 80
@@ -59,7 +59,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: yolo-consumer
-  namespace: workload
+  namespace: workloadb
   labels:
     run: yolo-consumer
 spec:
@@ -72,7 +72,7 @@ apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: yolo-consumer
-  namespace: workload
+  namespace: workloadb
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
@@ -81,7 +81,7 @@ spec:
 
   # DETERMINE MAX REPLICAS BASED ON THOTTLED RESOURCES
   # 1 CORE PER POD, 20 PODS TOTAL = MAX 20 REPLICAS
-  minReplicas: 1
+  minReplicas: 20
   maxReplicas: 34
   metrics:
   - type: Resource

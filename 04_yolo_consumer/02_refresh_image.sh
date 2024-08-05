@@ -2,7 +2,7 @@
 # docker login
 
 # SET YOUR GIT USERNAME
-MY_GIT_USERNAME="wickstjo"
+MY_GIT_USERNAME="roopekettunen"
 
 # BUILD THE DOCKER IMAGE
 docker build --no-cache -t workload_consumer -f consumer.Dockerfile .

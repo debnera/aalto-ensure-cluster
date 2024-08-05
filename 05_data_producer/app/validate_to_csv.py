@@ -28,6 +28,12 @@ yolo_pre_time = Histogram('yolo_pre_time', 'Job pre-processing time in seconds')
 yolo_inference_time = Histogram('yolo_inference_time', 'Job inference time in seconds')
 yolo_post_time = Histogram('yolo_post_time', 'Job post-processing time in seconds')
 # yolo_inference_time = Histogram('yolo_inference_time', 'Job processing time in seconds')
+yolo_queue_time = Histogram('yolo_queue_time', 'Job queue time in seconds')
+
+
+
+yolo_total_time_per_worker = Histogram('yolo_total_time_by_source', 'avg of work times for different workers', ['source'])
+
 
 class Validator:
 
@@ -37,7 +43,7 @@ class Validator:
         df = pd.DataFrame(rows)
         os.makedirs(os.path.dirname(args.output_path), exist_ok=True)
         df.to_csv(os.path.join(args.output_path, f"{self.output_counter}.csv"))
-        self.output_counter += 1
+        self.output_counter += 1	
 
     def format_response(self, data):
         response = copy.deepcopy(data)
@@ -48,34 +54,59 @@ class Validator:
             if key == 'total_n':
                 continue
 
-            # ONLY PROCESS YOLO INFERENCE RESULTS
+            # ONLY PROCESS YOLO INFERENCE RESULTS (this is for each pod?!)
             response[key]['min'] = round(min(data[key]['inf']), 2)
             response[key]['max'] = round(max(data[key]['inf']), 2)
             response[key]['avg'] = round(sum(data[key]['inf']) / len(data[key]['inf']), 2)
+            response[key]['avg_total'] = round((sum(data[key]['inf']) + sum(data[key]['pre']) + sum(data[key]['post']) + sum(data[key]['queue']) ) / len(data[key]['inf']), 2)
+            
+            
 
             # REMOVE CONTAINERS
             del response[key]['inf']
             del response[key]['pre']
 
         # FINALLY, PRINT THE FINDINGS
-        print(json.dumps(response, indent=4))
+        print(json.dumps(response, indent=4))	
 
     def process_event(self, raw_bytes, nth_thread):
 
         # SERIALIZE THE YOLO RESULTS
         yolo_results = custom_deserializer(raw_bytes)
+        print(yolo_results['timestamps'])
         source = yolo_results['source']
         model = yolo_results['model']
         dimensions = yolo_results['dimensions']
         pre = yolo_results['timestamps']['pre']
         inf = yolo_results['timestamps']['inf']
         post = yolo_results['timestamps']['post']
+        queue = 10
+        if 'queue' in yolo_results['timestamps'].keys():
+        	queue = yolo_results['timestamps']['queue']
+        else:	
+        	print("theres soemthing sus going on here")
+
+        start_time = yolo_results['timestamps']['start_time']
+        end_time = yolo_results['timestamps']['end_time']
 
         # PUBLISH PROMETHEUS STATISTICS
         yolo_count.inc()
         yolo_pre_time.observe(pre)
         yolo_inference_time.observe(inf)
         yolo_post_time.observe(post)
+        yolo_queue_time.observe(queue)
+        
+        
+
+        dat = copy.deepcopy(self.history)
+        for key in self.history.keys():
+            # SKIP NON-SOURCES
+            if key == 'total_n':
+                continue
+            dat[key]['avg_total'] = round((sum(dat[key]['inf']) + sum(dat[key]['pre']) + sum(dat[key]['post']) + sum(dat[key]['queue']) ) / len(dat[key]['inf']), 2)
+            yolo_total_time_per_worker.labels(source=key).observe(dat[key]['avg_total'])	
+        
+        
 
         # CREATE NEW CSV ROW
         self.data_rows.append({
@@ -85,6 +116,9 @@ class Validator:
             'pre': pre,
             'inf': inf,
             'post': post,
+            'queue': queue,
+            'start_time': start_time,
+            'end_time': end_time
         })
 
         # ADD SOURCE IF IT DOESNT ALREADY EXIST
@@ -97,6 +131,8 @@ class Validator:
         # PUSH YOLO RESULTS
         self.history[source]['pre'][next_index] = pre
         self.history[source]['inf'][next_index] = inf
+        self.history[source]['post'][next_index] = post
+        self.history[source]['queue'][next_index] = queue
 
         # INCREMENT LOCAL & GLOBAL COUNTERS
         self.history[source]['n'] += 1
@@ -108,7 +144,7 @@ class Validator:
 
         if len(self.data_rows) % args.save_interval == 0:
             self.save_to_csv(self.data_rows)
-            data_rows = []
+            self.data_rows = []
 
     def run(self):
 
@@ -134,6 +170,8 @@ class Validator:
         self.default = {
             'pre': [0] * args.print_interval,
             'inf': [0] * args.print_interval,
+            'post': [0] * args.print_interval,
+            'queue': [0] * args.print_interval,
             'n': 0,
         }
 

@@ -18,7 +18,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 admin_client = AdminClient({
-    'bootstrap.servers': ','.join(['130.233.193.117:' + str(x) for x in [10001, 10002, 10003]]),
+    'bootstrap.servers': ','.join(['130.233.193.117:' + str(x) for x in [10001]]),
 })
 
 # CHECK WHAT TOPICS EXIST
@@ -87,7 +87,7 @@ def test_topic(topic_name):
         kafka_client = create_consumer(topic_name)
 
         while lock.is_active():
-            kafka_client.poll_next(1, lock, lambda x, y: lock.kill())
+            kafka_client.poll_next(1, lock, lambda x, y, z, f: lock.kill())
 
     consumer_thread = Thread(target=cons, args=(thread_lock,))
     consumer_thread.start()

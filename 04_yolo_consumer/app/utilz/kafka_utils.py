@@ -1,6 +1,6 @@
 from confluent_kafka import Consumer, Producer
 from utilz.misc import log
-import sys
+import sys, time
 
 # GOOD DOCS FOR CONSUMER API
     # https://docs.confluent.io/platform/current/clients/confluent-kafka-python/html/index.html#consumer
@@ -9,7 +9,7 @@ import sys
 ###################################################################################################
 ###################################################################################################
 
-KAFKA_SERVERS = '130.233.193.117:10001,130.233.193.117:10002,130.233.193.117:10003'
+KAFKA_SERVERS = '130.233.193.117:10001'
 # KAFKA_SERVERS = 'localhost:10001,localhost:10002,localhost:10003'
 VERBOSE = True
 
@@ -54,7 +54,7 @@ class create_producer:
         # ASYNCRONOUSLY AWAIT CONSUMER ACK BEFORE SENDING NEXT MSG
         self.kafka_client.poll(1)
         # self.kafka_client.flush()
-
+	
 ###################################################################################################
 ###################################################################################################
 
@@ -139,7 +139,7 @@ class create_consumer:
 
                 # HANDLE THE EVENT VIA CALLBACK FUNC
                 if VERBOSE: log(f'THREAD {nth_thread}: EVENT RECEIVED ({self.kafka_topic})')
-                on_message(msg.value(), nth_thread)
+                on_message(msg.value(), nth_thread, int(time.time() * 1000), msg.timestamp()[1])
                 if VERBOSE: log(f'THREAD {nth_thread}: EVENT HANDLED')
 
             # SILENTLY DEAL WITH OTHER ERRORS

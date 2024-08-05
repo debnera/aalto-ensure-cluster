@@ -50,31 +50,7 @@ services:
     networks:
       - proxynet
 
-  # SECOND BROKER
-  kafka_broker_2:
-    <<: *kafka_shared
-    ports:
-      - 10002:10002
-    environment:
-      <<: *kafka_env
-      KAFKA_BROKER_ID: 2
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka_broker_2:11000,PLAINTEXT_HOST://130.233.193.117:10002
-      # KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka_broker_2:11000,PLAINTEXT_HOST://localhost:10002
-    networks:
-      - proxynet
 
-  # THIRD BROKER
-  kafka_broker_3:
-    <<: *kafka_shared
-    ports:
-      - 10003:10003
-    environment:
-      <<: *kafka_env
-      KAFKA_BROKER_ID: 3
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka_broker_3:11000,PLAINTEXT_HOST://130.233.193.117:10003
-      # KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka_broker_3:11000,PLAINTEXT_HOST://localhost:10003
-    networks:
-      - proxynet
 
 ############################################################################################
 ############################################################################################
