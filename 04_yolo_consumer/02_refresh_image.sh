@@ -5,8 +5,8 @@
 MY_GIT_USERNAME="roopekettunen"
 
 # BUILD THE DOCKER IMAGE
-docker build --no-cache -t workload_consumer -f consumer.Dockerfile .
+docker build -t workload_consumer_vino -f gpt.Dockerfile .
 
 # TAG & UPLOAD THE IMAGE TO DOCKER HUB REGISTRY
-docker tag workload_consumer:latest $MY_GIT_USERNAME/workload_consumer:latest
-docker push $MY_GIT_USERNAME/workload_consumer:latest
+docker tag workload_consumer_vino:latest $MY_GIT_USERNAME/workload_consumer_vino:latest
+docker push $MY_GIT_USERNAME/workload_consumer_vino:latest

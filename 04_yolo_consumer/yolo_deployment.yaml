@@ -20,9 +20,9 @@ spec:
       labels:
         run: yolo-consumer
     spec:
-      containers:
-      - name: yolo-consumer-roope
-        image: roopekettunen/workload_consumer:latest
+      containers:	
+      - name: yolo-consumer
+        image: roopekettunen/workload_consumer_vino:latest
         imagePullPolicy: Always
         ports:
           - containerPort: 80
@@ -34,13 +34,15 @@ spec:
 
           # DEFINE WHAT YOLO MODEL TO USE
           - name: YOLO_MODEL
-            value: "custom-20k"
-            # value: "custom-120k"
+            # value: "yolov8n"
+            value: "custom-120k"
             # value: "custom-300k"
             # value: "custom-750k"
             # value: "yolov5n"
             # value: "yolov5m"
             # value: "yolov5s"
+          - name: OPEN_VINO
+            value: "TRUE"
 
         # THORTTLE CONTAINERS OR NAH?
         # FEW LARGER PROCESSES, OR MANY SMALL ONES?
@@ -81,8 +83,8 @@ spec:
 
   # DETERMINE MAX REPLICAS BASED ON THOTTLED RESOURCES
   # 1 CORE PER POD, 20 PODS TOTAL = MAX 20 REPLICAS
-  minReplicas: 20
-  maxReplicas: 34
+  minReplicas: 6
+  maxReplicas: 6
   metrics:
   - type: Resource
     resource:
