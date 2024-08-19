@@ -27,12 +27,12 @@ def run():
         return
 
     # CREATE KAFKA CLIENTS
-    kafka_consumer = create_consumer(args['kafka_input'])
-    kafka_producer = create_producer()
-
-    # MAKE SURE KAFKA CONNECTIONS ARE OK
-    if not kafka_producer.connected() or not kafka_consumer.connected():
-        return
+    # kafka_consumer = create_consumer(args['kafka_input'])
+    # kafka_producer = create_producer()
+    #
+    # # MAKE SURE KAFKA CONNECTIONS ARE OK
+    # if not kafka_producer.connected() or not kafka_consumer.connected():
+    #     return
 
     #torch method
     # yolo_model = torch.hub.load('ultralytics/yolov5', 'custom', path=f'./models/{args["model"]}.pt', trust_repo=True, force_reload=True)
@@ -78,7 +78,7 @@ def run():
         print("everything all right up to here right??!")
         # PUSH RESULTS INTO VALIDATION TOPIC
         if args['validate_results']:
-            kafka_producer.push_msg(args['kafka_output'], custom_serializer({
+            kafka_producer.push_msg(args['kafka_    output'], custom_serializer({
                 'timestamps': {
                     'pre': results[0].speed['preprocess'],
                     'inf': results[0].speed['inference'],

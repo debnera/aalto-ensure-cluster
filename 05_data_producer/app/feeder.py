@@ -102,9 +102,14 @@ def run():
             0.813,  0.656,  0.5,    0.343,  0.186,  0.03
         ] * py_args.n_cycles
 
+        #new linear cycle
+        linear_cycle = []
+        for x in range(1, 25):
+            linear_cycle.append(x / 24)
+        print(linear_cycle)
         # SCALE THE ARRAY WHILE MAINTAINING RATIOS
         real_cycle = resize_array(
-            default_cycle, 
+            linear_cycle,
             args['experiment']['n_breakpoints']
         )
 
