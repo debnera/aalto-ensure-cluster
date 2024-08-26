@@ -62,66 +62,67 @@ kubeadm token create --print-join-command
 ```
 
 <!-- ########################################################################################################## -->
-## 2. CREATE A KUBERNETES WORKER NODE
+## 2. CREATE AND CONNECT KUBERNETES WORKER NODES
 
-- Script location: [`./02_worker_node.sh`](02_worker_node.sh)
-- Individual script steps:
+- Old method was to individually add each worker
+- Now we can add all the workers at once by running 
+- 1. [`../scripts/workers/00_create_new_kube_token.sh`](00_create_new_kube_token.sh)
 
 ```bash
-# TURN OF SWAP & FIREWALLS
-sudo swapoff -a
-systemctl stop firewalld
-sudo systemctl disable firewalld
+kubeadm token create --print-join-command > kube.token
+echo "Printed the join command and token to 'kube.token'. You can now use it to connect the workers."
 ```
 
-```bash
-# SET THE NECESSARY VARIABLES
-# THE TOKENS ARE GENERATED WHEN CREATING THE MASTER NODE
-MASTER_IP="192.168.1.152"
-JOIN_TOKEN="eyly0u.xisykck7t3kj5i4e"
-SHA_TOKEN="671fe2eee2c3a033401bacc8f1465614d10242057aa7420b6b15629f4aeeebeb"
-```
+- 2. [`../scripts/workers/01_reset_and_connect_workers.sh`](01_reset_and_connect_workers.sh)
 
 ```bash
-# JOIN THE CLUSTER
-kubeadm join $MASTER_IP:6443 \
-    --token $JOIN_TOKEN \
-    --discovery-token-ca-cert-hash sha256:$SHA_TOKEN \
-    --cri-socket=unix:///var/run/cri-dockerd.sock
+scp kube.token wickstjo@worker1:~/
+scp kube.token wickstjo@worker2:~/
+scp kube.token wickstjo@worker3:~/
+scp kube.token wickstjo@worker4:~/
+scp kube.token wickstjo@worker5:~/
+
+scp reset_and_reconnect.sh wickstjo@worker1:~/
+scp reset_and_reconnect.sh wickstjo@worker2:~/
+scp reset_and_reconnect.sh wickstjo@worker3:~/
+scp reset_and_reconnect.sh wickstjo@worker4:~/
+scp reset_and_reconnect.sh wickstjo@worker5:~/
+
+ssh wickstjo@worker1 ./reset_and_reconnect.sh
+kubectl get nodes
+ssh wickstjo@worker2 ./reset_and_reconnect.sh
+kubectl get nodes
+ssh wickstjo@worker3 ./reset_and_reconnect.sh
+kubectl get nodes
+ssh wickstjo@worker4 ./reset_and_reconnect.sh
+kubectl get nodes
+ssh wickstjo@worker5 ./reset_and_reconnect.sh
+kubectl get nodes
+```
+
+- The script above uses the following helper script [`../scripts/workers/reset_and_reconnect.sh`](reset_and_reconnect.sh) 
+
+```bash
+# RESET THE NODE
+sudo -S kubeadm reset --cri-socket=unix:///var/run/cri-dockerd.sock
+
+# NUKE ALL OLD KUBERNETES FILES
+sudo -S rm -rf /home/wickstjo/.kube
+
+# TURN OFF LINUX SWAP & FIREWALL
+sudo -S swapoff -a
+sudo -S systemctl stop firewalld
+sudo -S systemctl disable firewalld
+
+echo -e "\n#####################################\n"
+
+JOIN_CMD=$(cat /home/wickstjo/kube.token)
+
+sudo -S $JOIN_CMD --cri-socket=unix:///var/run/cri-dockerd.sock
 ```
 
 <!-- ########################################################################################################## -->
-## 99. RESET CLUSTER NODE & REJOIN
+## 99. RESET CLUSTER
 
-- Script location: [`./99_reset_node.sh`](99_reset_node.sh)
-- Individual script steps:
-
-```bash
-# RESET THE KUBEADM SETUP & NUKE ALL OLD KUBERNETES FILES
-# THIS NEEDS TO BE PERFORMED ON EACH NODE, MASTER AND WORKER ALIKE
-sudo kubeadm reset --cri-socket=unix:///var/run/cri-dockerd.sock
-sudo rm -rf ~/.kube
-```
-
-```bash
-# TURN OFF LINUX SWAP & FIREWALL
-sudo swapoff -a
-sudo systemctl stop firewalld
-sudo systemctl disable firewalld
-```
-
-```bash
-# SET THE NECESSARY VARIABLES
-# THE TOKENS ARE GENERATED WHEN CREATING THE MASTER NODE
-MASTER_IP="192.168.1.152"
-JOIN_TOKEN="eyly0u.xisykck7t3kj5i4e"
-SHA_TOKEN="671fe2eee2c3a033401bacc8f1465614d10242057aa7420b6b15629f4aeeebeb"
-```
-
-```bash
-# JOIN THE CLUSTER
-kubeadm join $MASTER_IP:6443 \
-    --token $JOIN_TOKEN \
-    --discovery-token-ca-cert-hash sha256:$SHA_TOKEN \
-    --cri-socket=unix:///var/run/cri-dockerd.sock
-```
+- The fastest way to reset the cluster is to reset the master via:
+- [`./99_reset_master.sh`](99_reset_master.sh)
