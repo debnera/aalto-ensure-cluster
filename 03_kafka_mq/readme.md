@@ -9,6 +9,8 @@
     - Instead, we run `Kafka`, `Zookeeper` and a separate `Prometheus` instance externally.
     - Once an experiment has been performed, the data from both `Prometheus` instances (one for Kubernetes, one for Kafka) are aggregated and analyzed together.
 
+- NOTE: Having only one Kafka consumer, as opposed to three, has seemed to work just as well and thus the current scripts in this branch and repo only use one. 
+
 <!-- ########################################################################################################## -->
 ## Table of Contents
 

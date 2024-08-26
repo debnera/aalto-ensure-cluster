@@ -82,10 +82,10 @@ class Validator:
         post = yolo_results['timestamps']['post']
         queue = 10
         if 'queue' in yolo_results['timestamps'].keys():
-        	queue = yolo_results['timestamps']['queue']
+            queue = yolo_results['timestamps']['queue']
         else:	
-        	print("theres soemthing sus going on here")
-
+            print("theres soemthing sus going on here")
+        
         start_time = yolo_results['timestamps']['start_time']
         end_time = yolo_results['timestamps']['end_time']
 
