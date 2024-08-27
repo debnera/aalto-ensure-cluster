@@ -102,7 +102,7 @@ If at any point something is not working, see the Troubleshooting section, and y
   - Data can be extracted once the experiment duration has passed
   - For Yolo
     - In 05, open app/yolo_outputs/ to find yolo qos data saved as .csv files.
-    - Make sure to reset the yolo_tracker app via `docker compose down` then `docker compose up` when running a new run. It is wise to also save the old data before clearing the folder.
+    - Make sure to reset the yolo_tracker app via `docker compose down` then `docker compose up` when running a new run. It is wise to also save and clear the old data in the 'yolo_outputs' folder.
   - For Prometheus
     - In 07, run `python3 extrator.py --start "2024-01-30 19:10:15" --end "2024-01-31 03:10:15" --sampling 5 --n_threads 8 --segment_size 2000` to extract all prom data into app/snapshots/, making sure to modifty --start and --end based on the Local Time of your experiment run. A folder with a timestamp of extraction should appear, filled with metrics.  
 
@@ -113,17 +113,17 @@ If at any point something is not working, see the Troubleshooting section, and y
     - Likely there is a problem with the python scripts within the container, and thus looking at the logs of a specific error pod can help, see 'Some basic commands to get started' above.
   - Terminating namespace stuck problem
     - Often happens after running the command `kubectl delete -f application.yaml`, and can be fixed via https://www.ibm.com/docs/en/cloud-private/3.2.0?topic=console-namespace-is-stuck-in-terminating-state.
-- python script dependencies problem
-  - make sure to know that some python scripts will be run on the docker container python environment while others on the master machine, so be sure that all requirements are up to date on both accordingly.  
-- kafka partitioning stuck problem
-  - If running `03_init_and_deploy.sh` seems to get stuck on parititoning, restarting the kafka server using `02_shutdown.sh` in 03, and then `01_launch_local_kafka.sh` should solve the problem. Remember to also reconnect the yolo_tracker if you wish for yolo qos statistics.
-- empty prometheus extract snapshot data problem
-  - remember to use the local time of your prometheus database when running the `extractor.py` script. It is also possible that the data got wiped due to a. restarting of the PC, b. the 48 hour timeout of prometheus, or c. a prometheus database restart via kubernetes actions.
-- Daemon socket problem
-  - A common error you may face is the message 'permission denied while trying to connect to the Docker daemon socket at ...' This can occur when some of the kubernetes configurations are done with the 'sudo' prefix, while others are not, causing network related errors. To prevent this, completely restarting and making sure to not use 'sudo' unless aboslutely necessary should solve this problem. 
-- Network (grafana or port forwarding) problem
-  -  Signs of this issue include, data from within kubernetes is struggling to load onto the grafana dashboards and broken pipe errors found when looking at `03_expose_ports.sh` using `screen -ls`.
-  - Resetting the switch power and restarting the cluster may help, but overall this error has been quite mysterious and has only really been solved with time.  
+  - python script dependencies problem
+    - make sure to know that some python scripts will be run on the docker container python environment while others on the master machine, so be sure that all requirements are up to date on both accordingly.  
+  - kafka partitioning stuck problem
+    - If running `03_init_and_deploy.sh` seems to get stuck on parititoning, restarting the kafka server using `02_shutdown.sh` in 03, and then `01_launch_local_kafka.sh` should solve the problem. Remember to also reconnect the yolo_tracker if you wish for yolo qos statistics.
+  - empty prometheus extract snapshot data problem
+    - remember to use the local time of your prometheus database when running the `extractor.py` script. It is also possible that the data got wiped due to a. restarting of the PC, b. the 48 hour timeout of prometheus, or c. a prometheus database restart via kubernetes actions.
+  - Daemon socket problem
+    - A common error you may face is the message 'permission denied while trying to connect to the Docker daemon socket at ...' This can occur when some of the kubernetes configurations are done with the 'sudo' prefix, while others are not, causing network related errors. To prevent this, completely restarting and making sure to not use 'sudo' unless aboslutely necessary should solve this problem. 
+  - Network (grafana or port forwarding) problem
+    -  Signs of this issue include, data from within kubernetes is struggling to load onto the grafana dashboards and broken pipe errors found when looking at `03_expose_ports.sh` using `screen -ls`.
+    - Resetting the switch power and restarting the cluster may help, but overall this error has been quite mysterious and has only really been solved with time.  
 
 ## Unknown things
 
