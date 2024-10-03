@@ -1,0 +1,12 @@
+confluent-kafka
+Pillow
+torch
+opencv-python
+ultralytics
+bezier
+openvino
+
+gitpython
+gitdb
+smmap
+setuptools==68.2.2
