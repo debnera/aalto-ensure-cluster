@@ -6,6 +6,7 @@ On the other hand, OpenVino seems to give much more stable QoS metrics.
 
 TODO: 
 
+[] Get local Kafka + image setup working
 [] Get multiple OV YOLO models working
 [] Run linear experiments to figure out limits of each model
 [] Run day-night-cycle to figure out how each model acts with dynamic workloads

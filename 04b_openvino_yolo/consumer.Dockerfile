@@ -12,11 +12,11 @@ RUN apt-get install ffmpeg libsm6 libxext6 wget -y
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
 # DOWNLOAD & SET YOLO ZIP
-RUN mkdir -p /root/.cache/torch/hub/
-RUN wget -O /root/.cache/torch/hub/master.zip https://github.com/ultralytics/yolov5/zipball/master
+#RUN mkdir -p /root/.cache/torch/hub/
+#RUN wget -O /root/.cache/torch/hub/master.zip https://github.com/ultralytics/yolov5/zipball/master
 
 # RUN CONSUMER
-CMD ["python", "processor.py"]
+CMD ["python", "vino_consumer.py"]
 
 # docker build --no-cache -t workload_consumer -f consumer.Dockerfile .
 # docker run workload_consumer
