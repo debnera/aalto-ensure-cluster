@@ -9,8 +9,8 @@ import sys, time
 ###################################################################################################
 ###################################################################################################
 
-KAFKA_SERVERS = '130.233.193.117:10001'
-# KAFKA_SERVERS = 'localhost:10001,localhost:10002,localhost:10003'
+# KAFKA_SERVERS = '130.233.193.117:10001'
+KAFKA_SERVERS = 'localhost:10001,localhost:10002,localhost:10003'
 VERBOSE = True
 
 ###################################################################################################
@@ -133,14 +133,13 @@ class create_consumer:
                 if msg.error():
                     print('FAULTY EVENT RECEIVED', msg.error())
                     continue
-                print("what kinda consumer error goin on over here?!")
                 # COMMIT THE EVENT TO PREVENT OTHERS FROM TAKING IT
                 self.kafka_client.commit(msg, asynchronous=True)
 
                 # HANDLE THE EVENT VIA CALLBACK FUNC
                 if VERBOSE: log(f'THREAD {nth_thread}: EVENT RECEIVED ({self.kafka_topic})')
 
-                on_message(msg.value(), nth_thread, int(time.time() * 1000), msg.timestamp()[1])
+                on_message(msg.value(), msg.key(), int(time.time() * 1000), msg.timestamp()[1])
                 if VERBOSE: log(f'THREAD {nth_thread}: EVENT HANDLED')
 
             # SILENTLY DEAL WITH OTHER ERRORS

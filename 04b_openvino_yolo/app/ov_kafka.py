@@ -19,10 +19,11 @@ def run():
     # Dynamic arguments for YOLO processing
     args = {
         'model': os.environ.get('YOLO_MODEL', 'yolov8n'),
+        'open_vino': os.environ.get('OPEN_VINO', 'TRUE') == 'TRUE',
         'validate_results': os.environ.get('VALIDATE_RESULTS', 'TRUE') == 'TRUE',
-        'kafka_input': os.environ.get('KAFKA_INPUT_TOPIC', 'yolo_input'),
-        'kafka_output': os.environ.get('KAFKA_OUTPUT_TOPIC', 'yolo_output'),
-        'kafka_servers': os.environ.get('KAFKA_SERVERS', 'localhost:10001,localhost:10002,localhost:10003')
+        'VERBOSE': os.environ.get('VERBOSE', 'TRUE') == 'TRUE',
+        'kafka_input': 'yolo_input',
+        'kafka_output': 'yolo_output',
     }
     print(args)
 
@@ -61,9 +62,13 @@ def run():
     thread_lock = create_lock()
 
 
-    def process_event(img_bytes, nth_thread, time_received, time_sent):
+    def process_event(img_bytes, msg_key, time_received, time_sent):
         global errors
         queue_time = time_received - time_sent  # How long was the message waiting in queue?
+        img_id = msg_key.decode('utf-8')
+
+        if args['VERBOSE']:
+            print(f"Image {img_id} received! Queue_time: {queue_time} ms, size {len(img_bytes)} bytes.")
         t1 = time.time()
         # Preprocess: Fetch image
         img = Image.open(io.BytesIO(img_bytes))
@@ -74,6 +79,8 @@ def run():
         # Inference
         results = yolo_ov_core(image_array)
         t_inf = (time.time() - t2) * 1000
+        if args['VERBOSE']:
+            print(f"queue: {queue_time}, t_pre: {t_pre}, t_inf: {t_inf}")
 
         # Postprocess: (TODO: Does ultralytics library do postprocessing by itself?)
 
@@ -88,6 +95,7 @@ def run():
                     'start_time': time_sent,
                     'end_time': time_received
                 },
+                'id': img_id,
                 'errors': errors,
                 'source': ip_addr,
                 'model': args['model'],
@@ -102,6 +110,8 @@ def run():
     except KeyboardInterrupt:
         thread_lock.kill()
         log('Worker manually killed.', True)
+    except Exception as e:
+        print(e)
 
 
 run()

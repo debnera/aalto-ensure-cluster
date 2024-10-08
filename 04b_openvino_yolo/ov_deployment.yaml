@@ -12,6 +12,7 @@ metadata:
   name: yolo-consumer
   namespace: workloadb
 spec:
+  replicas: 1
   selector:
     matchLabels:
       run: yolo-consumer
@@ -20,24 +21,26 @@ spec:
       labels:
         run: yolo-consumer
     spec:
-      containers:	
-      - name: yolo-consumer
-        image: roopekettunen/workload_consumer_vino:latest
-        imagePullPolicy: Always
-        ports:
-          - containerPort: 80
-        env:
-          - name: VALIDATE_RESULTS
-            value: "TRUE"
-          - name: YOLO_MODEL
-            value: "yolov8n"
-          - name: OPEN_VINO
-            value: "TRUE"
-        resources:
-          limits:
-            cpu: 1000m
-          requests:
-            cpu: 1000m
+      containers:
+        - name: yolo-consumer
+          image: debnera/ov_yolo:0.1-test
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          env:
+            - name: YOLO_MODEL
+              value: "yolov8n"
+            - name: KAFKA_INPUT_TOPIC
+              value: "yolo_input"
+            - name: KAFKA_OUTPUT_TOPIC
+              value: "yolo_output"
+            - name: KAFKA_SERVERS
+              value: "130.233.193.117:10001"
+          resources:
+            limits:
+              cpu: 1000m
+            requests:
+              cpu: 1000m
 ---
 apiVersion: v1
 kind: Service
@@ -48,40 +51,6 @@ metadata:
     run: yolo-consumer
 spec:
   ports:
-  - port: 80
+    - port: 80
   selector:
     run: yolo-consumer
----
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: yolo-consumer
-  namespace: workloadb
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: yolo-consumer
-  minReplicas: 6
-  maxReplicas: 6
-  metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-
-        # HIGH PERCENTAGE = SCALE SLOWER
-        # LOW PERCENTAGE = SCALE FASTER
-        averageUtilization: 80
-
-  # DEPENDENT ON METRICS SERVER INTERVAL (>=10s)
-  # ADD 10-20% BUFFER TO MAKE SURE METRICS SERVER IS FRESH?
-  behavior:
-
-    # MINIMUM 10 SECONDS, BUT SHOULD PROBABLY BE 60+ SECONDS FOR STABILITY
-    # STRATEGY: SCALE UP FAST WHEN NECESSARY, BUT SCALE DOWN SLOWLY FOR STABILITY?
-    scaleDown:
-      stabilizationWindowSeconds: 60
-    scaleUp:
-      stabilizationWindowSeconds: 10
