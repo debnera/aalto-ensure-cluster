@@ -15,10 +15,24 @@ def deploy_application(yolo_model):
     # deploy_experiment.deploy_application(yolo_model)
     subprocess.run(["kubectl", "apply", "-f", "ov_deployment.yaml"])
 
+    # # Wait until 5 instances of pod "yolo-consumer" from namespace "workloadb" are running
+    # while True:
+    #     result = subprocess.run(
+    #         ["kubectl", "get", "pods", "-n", "workloadb", "-l", "app=yolo-consumer", "-o", "yaml"],
+    #         capture_output=True,
+    #         text=True
+    #     )
+    #     pods = yaml.safe_load(result.stdout)
+    #     running_pods = [pod for pod in pods["items"] if pod["status"]["phase"] == "Running"]
+    #     if len(running_pods) >= 5:
+    #         break
+    #     print("Waiting for 5 yolo-consumer pods to be running...")
+    #     time.sleep(10)  # Wait for 10 seconds before checking again
+
 # Function to delete the deployment and service
 def clean_up():
     # deploy_experiment.clean_up()
-    subprocess.run(["kubectl", "remove", "-f", "ov_deployment.yaml"])
+    subprocess.run(["kubectl", "scale", "deployment", "yolo-consumer", "-n", "workloadb", "--replicas=0"])
 
 def wait_for_yolo_outputs():
     pass
@@ -42,7 +56,7 @@ for model in yolo_models:
 
     # Feed images
     print("Feeding data.")
-    images_sent = dummy_feeder.feed_data()
+    images_sent = dummy_feeder.feed_data(10)
     image_ids = set(x for x in range(images_sent))
 
     # Wait for results

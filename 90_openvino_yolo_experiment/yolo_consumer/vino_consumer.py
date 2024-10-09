@@ -22,7 +22,8 @@ def run():
         'validate_results': os.environ.get('VALIDATE_RESULTS', 'TRUE') == 'TRUE',
         'kafka_input': os.environ.get('KAFKA_INPUT_TOPIC', 'yolo_input'),
         'kafka_output': os.environ.get('KAFKA_OUTPUT_TOPIC', 'yolo_output'),
-        'kafka_servers': os.environ.get('KAFKA_SERVERS', 'localhost:10001,localhost:10002,localhost:10003')
+        'kafka_servers': os.environ.get('KAFKA_SERVERS', 'localhost:10001,localhost:10002,localhost:10003'),
+        'VERBOSE': os.environ.get('VERBOSE', 'FALSE') == 'TRUE'
     }
     print(args)
 

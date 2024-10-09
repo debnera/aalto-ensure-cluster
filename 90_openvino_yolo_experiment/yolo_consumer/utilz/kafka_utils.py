@@ -141,7 +141,6 @@ class create_consumer:
 
                 # HANDLE THE EVENT VIA CALLBACK FUNC
                 if VERBOSE: log(f'THREAD {nth_thread}: EVENT RECEIVED ({self.kafka_topic})')
-
                 on_message(msg.value(), msg.key(), int(time.time() * 1000), msg.timestamp()[1])
                 if VERBOSE: log(f'THREAD {nth_thread}: EVENT HANDLED')
 

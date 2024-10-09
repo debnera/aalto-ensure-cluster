@@ -18,6 +18,9 @@ FROM dependencies
 # Copy rest of the application to the container
 COPY yolo_consumer /app
 
+# Copy cached models to the container
+COPY model_cache /app
+
 # Set working directory
 WORKDIR /app
 

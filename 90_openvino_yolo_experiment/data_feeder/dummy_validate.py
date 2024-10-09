@@ -12,7 +12,7 @@ def wait_for_results(image_ids):
         group_id='my-group',
         value_deserializer=lambda x: json.loads(x.decode('utf-8'))
     )
-
+    image_ids = set(str(x) for x in image_ids)  # Make sure the ids are strings, as kafka gives them as strings
     print(f"Sent image IDs: {image_ids}")
     print("Waiting for messages from 'yolo_output'...")
 
@@ -41,6 +41,7 @@ def wait_for_results(image_ids):
             print(f"Received message {message.value['id']} with timestamp: {message.value['timestamps']}")
         if len(received_ids) == len(image_ids):
             print(f"Successfully received all {len(image_ids)} messages! (duplicates: {duplicates}, unknowns: {unknowns})")
+            break
 
     consumer.close()
 

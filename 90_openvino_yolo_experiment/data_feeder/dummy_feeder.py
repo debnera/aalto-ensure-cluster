@@ -6,7 +6,7 @@ import cv2
 import itertools
 import time
 
-def feed_data():
+def feed_data(n_images=100):
     # Configure the Kafka producer
     kafka_servers = 'localhost:10001,localhost:10002,localhost:10003'
     producer = KafkaProducer(bootstrap_servers=kafka_servers)
@@ -15,7 +15,7 @@ def feed_data():
     use_jpg = True
     image_ids = set()
     image_count = itertools.count()
-    for i in range(100):
+    for i in range(n_images):
         # Send the image to Kafka with image id as the key
 
         # Generate random RGB image
