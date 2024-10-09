@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
         - name: yolo-consumer
-          image: debnera/ov_yolo:0.1-test
+          image: debnera/ov_yolo:0.3-test
           imagePullPolicy: Always
           ports:
             - containerPort: 80
@@ -35,7 +35,7 @@ spec:
             - name: KAFKA_OUTPUT_TOPIC
               value: "yolo_output"
             - name: KAFKA_SERVERS
-              value: "130.233.193.117:10001"
+              value: "130.233.96.30:10001"
           resources:
             limits:
               cpu: 1000m

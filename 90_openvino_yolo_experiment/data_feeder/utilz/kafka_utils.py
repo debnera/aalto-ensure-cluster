@@ -1,6 +1,6 @@
 from confluent_kafka import Consumer, Producer
 from utilz.misc import log
-import sys
+import sys, time
 
 # GOOD DOCS FOR CONSUMER API
     # https://docs.confluent.io/platform/current/clients/confluent-kafka-python/html/index.html#consumer
@@ -9,8 +9,8 @@ import sys
 ###################################################################################################
 ###################################################################################################
 
-KAFKA_SERVERS = '130.233.193.117:10001'
-# KAFKA_SERVERS = 'localhost:10001,localhost:10002,localhost:10003'
+# KAFKA_SERVERS = '130.233.193.117:10001'
+KAFKA_SERVERS = 'localhost:10001,localhost:10002,localhost:10003'
 VERBOSE = True
 
 ###################################################################################################
@@ -19,9 +19,9 @@ VERBOSE = True
 class create_producer:
 
     # ON LOAD, CREATE KAFKA PRODUCER
-    def __init__(self):
+    def __init__(self, kafka_servers=KAFKA_SERVERS):
         self.kafka_client = Producer({
-            'bootstrap.servers': KAFKA_SERVERS,
+            'bootstrap.servers': kafka_servers,
         })
 
     # MAKE SURE KAFKA CONNECTION IS OK
@@ -42,33 +42,35 @@ class create_producer:
             if VERBOSE: log(f'MESSAGE PUSHED')
 
     # PUSH MESSAGE TO A KAFK TOPIC
-    def push_msg(self, topic_name, bytes_data):
+    def push_msg(self, topic_name, bytes_data, key=None):
 
         # PUSH MESSAGE TO KAFKA TOPIC
         self.kafka_client.produce(
-            topic_name, 
+            topic_name,
             value=bytes_data,
             on_delivery=self.ack_callback,
+            key=key,
         )
 
         # ASYNCRONOUSLY AWAIT CONSUMER ACK BEFORE SENDING NEXT MSG
         self.kafka_client.poll(1)
         # self.kafka_client.flush()
-
+	
 ###################################################################################################
 ###################################################################################################
 
 class create_consumer:
 
     # ON LOAD, CREATE KAFKA CONSUMER CLIENT
-    def __init__(self, kafka_topic):
+    def __init__(self, kafka_topic, kafka_servers=KAFKA_SERVERS):
 
         # SET STATIC CONSUMPTION CONFIGS
         self.kafka_topic = kafka_topic
+        self.kafka_servers = kafka_servers
 
         # CREATE THE CONSUMER CLIENT
         self.kafka_client = Consumer({
-            'bootstrap.servers': KAFKA_SERVERS,
+            'bootstrap.servers': kafka_servers,
             'group.id': kafka_topic + '.consumers',
             'enable.auto.commit': False,
             'on_commit': self.ack_callback,
@@ -107,7 +109,7 @@ class create_consumer:
             log('SUCCESSFULLY CONNECTED TO KAFKA')
             return True
         except:
-            log(f'COULD NOT CONNECT WITH KAFKA SERVER ({KAFKA_SERVERS})') 
+            log(f'COULD NOT CONNECT WITH KAFKA SERVER ({self.kafka_servers})')
             return False
 
     # AUTO CALLBACK WHEN CONSUMER COMMITS MESSAGE
@@ -133,13 +135,13 @@ class create_consumer:
                 if msg.error():
                     print('FAULTY EVENT RECEIVED', msg.error())
                     continue
-
                 # COMMIT THE EVENT TO PREVENT OTHERS FROM TAKING IT
                 self.kafka_client.commit(msg, asynchronous=True)
 
                 # HANDLE THE EVENT VIA CALLBACK FUNC
                 if VERBOSE: log(f'THREAD {nth_thread}: EVENT RECEIVED ({self.kafka_topic})')
-                on_message(msg.value(), nth_thread)
+
+                on_message(msg.value(), msg.key(), int(time.time() * 1000), msg.timestamp()[1])
                 if VERBOSE: log(f'THREAD {nth_thread}: EVENT HANDLED')
 
             # SILENTLY DEAL WITH OTHER ERRORS

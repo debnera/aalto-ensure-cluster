@@ -28,8 +28,8 @@ def run():
 
     logging.basicConfig(filename='yolo_log.log', level=logging.DEBUG)
 
-    kafka_consumer = create_consumer(args['kafka_input'])
-    kafka_producer = create_producer()
+    kafka_consumer = create_consumer(args['kafka_input'], kafka_servers=args['kafka_servers'])
+    kafka_producer = create_producer(kafka_servers=args['kafka_servers'])
 
     # Check that Kafka is working
     if not kafka_producer.connected() or not kafka_consumer.connected():

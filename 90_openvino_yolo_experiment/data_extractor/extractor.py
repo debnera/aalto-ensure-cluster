@@ -120,23 +120,24 @@ def create_snapshot(start_time: str, end_time: str, sampling: int, segment_size:
 # create_snapshot('2024-01-30 08:55:45', '2024-01-30 16:55:45', 5)
 # create_snapshot('2024-01-30 19:10:15', '2024-01-31 03:10:15', 5)
 
-# PARSE PYTHON ARGUMENTS
-parser = argparse.ArgumentParser()
+if __name__ == '__main__':
+    # PARSE PYTHON ARGUMENTS
+    parser = argparse.ArgumentParser()
 
-# PYTHON PARAMS
-parser.add_argument("-s", "--start", type=str, help="Starting timestamp for the experiment",)
-parser.add_argument("-e", "--end", type=str, help="Ending timestamp for the experiment",)
-parser.add_argument("-r", "--sampling", type=int, help="Sampling rate in seconds",)
-parser.add_argument("-z", "--segment_size", type=int, help="Segment size that Prometheus queries are broken into",)
-parser.add_argument("-t", "--n_threads", type=int, help="Number of concurrent threads to use",)
+    # PYTHON PARAMS
+    parser.add_argument("-s", "--start", type=str, help="Starting timestamp for the experiment",)
+    parser.add_argument("-e", "--end", type=str, help="Ending timestamp for the experiment",)
+    parser.add_argument("-r", "--sampling", type=int, help="Sampling rate in seconds",)
+    parser.add_argument("-z", "--segment_size", type=int, help="Segment size that Prometheus queries are broken into",)
+    parser.add_argument("-t", "--n_threads", type=int, help="Number of concurrent threads to use",)
 
-py_args = parser.parse_args()
-# extractor.py --start "2024-01-30 19:10:15" --end "2024-01-31 03:10:15" --sampling 5 --n_threads 5
+    py_args = parser.parse_args()
+    # extractor.py --start "2024-01-30 19:10:15" --end "2024-01-31 03:10:15" --sampling 5 --n_threads 5
 
-create_snapshot(
-    start_time=py_args.start,
-    end_time=py_args.end,
-    sampling=py_args.sampling,
-    segment_size=py_args.segment_size,
-    n_threads=py_args.n_threads
-)
+    create_snapshot(
+        start_time=py_args.start,
+        end_time=py_args.end,
+        sampling=py_args.sampling,
+        segment_size=py_args.segment_size,
+        n_threads=py_args.n_threads
+    )

@@ -10,3 +10,9 @@ gitpython
 gitdb
 smmap
 setuptools==68.2.2
+
+onnxruntime
+onnx>=1.12.0
+
+
+# requirements: Ultralytics requirements ['onnx>=1.12.0', 'onnxslim==0.1.34', 'onnxruntime'] not found, attempting AutoUpdate...
