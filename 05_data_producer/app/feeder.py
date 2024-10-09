@@ -5,6 +5,7 @@ from utilz.misc import resource_exists, log, create_lock, resize_array
 from utilz.kafka_utils import create_producer
 from threading import Thread, Semaphore
 import time, math, random, argparse
+import itertools
 
 # python3 feeder.py --duration 7200 --breakpoints 200 --max_mbps 15
 
@@ -79,6 +80,7 @@ def run(max_mbps=1, breakpoints=200, duration_seconds=60 * 60 * 2, n_cycles=5, c
     # INSTANTIATE THREAD LOCKS
     thread_lock = create_lock()
     semaphore = Semaphore(1)
+    image_count = itertools.count()
 
     # KEEP TRACK THREADS AND KAFKA PRODUCERS
     threads = []
@@ -191,6 +193,7 @@ def run(max_mbps=1, breakpoints=200, duration_seconds=60 * 60 * 2, n_cycles=5, c
                 img_as_bytes = buffer.tobytes()
             else:
                 img_as_bytes = image.tobytes()
+            image_id = next(image_count)
             kafka_producers[nth_thread - 1].push_msg('yolo_input', img_as_bytes)
             
             # FETCH THE LATEST ACTION COOLDOWN
@@ -236,6 +239,8 @@ def run(max_mbps=1, breakpoints=200, duration_seconds=60 * 60 * 2, n_cycles=5, c
     except KeyboardInterrupt:
         thread_lock.kill()
         log('WORKER & THREADS MANUALLY KILLED..', True)
+
+    return image_count
 
 if __name__ == '__main__':
     py_args = parser.parse_args()
