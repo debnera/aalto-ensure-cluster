@@ -1,5 +1,6 @@
 confluent-kafka
 Pillow
+opencv-python
 
 bezier
 pandas
