@@ -8,26 +8,30 @@ import datetime
 
 # Define the different YOLO_MODEL values to test
 yolo_models = ["yolov8n", "yolov8s", "yolov8m", "yolov8l", "yolov8x"]
+idle_before_start = 0.1*60 # (seconds) Wait for yolo instances to start
+idle_after_end = 0.1*60 # (seconds) Catch the tail of the experiment metrics
 
 
 # Function to deploy the application
 def deploy_application(yolo_model):
     # deploy_experiment.deploy_application(yolo_model)
     subprocess.run(["kubectl", "apply", "-f", "ov_deployment.yaml"])
+    replicas = 2
 
-    # # Wait until 5 instances of pod "yolo-consumer" from namespace "workloadb" are running
-    # while True:
-    #     result = subprocess.run(
-    #         ["kubectl", "get", "pods", "-n", "workloadb", "-l", "app=yolo-consumer", "-o", "yaml"],
-    #         capture_output=True,
-    #         text=True
-    #     )
-    #     pods = yaml.safe_load(result.stdout)
-    #     running_pods = [pod for pod in pods["items"] if pod["status"]["phase"] == "Running"]
-    #     if len(running_pods) >= 5:
-    #         break
-    #     print("Waiting for 5 yolo-consumer pods to be running...")
-    #     time.sleep(10)  # Wait for 10 seconds before checking again
+    # Wait until 5 instances of pod "yolo-consumer" from namespace "workloadb" are running
+    while True:
+        result = subprocess.run(
+            ["kubectl", "get", "pods", "-n", "workloadb", "-l", "run=yolo-consumer", "-o", "yaml"],
+            capture_output=True,
+            text=True
+        )
+        pods = yaml.safe_load(result.stdout)
+        running_pods = [pod for pod in pods["items"] if pod["status"]["phase"] == "Running"]
+        if len(running_pods) >= replicas:
+            break
+        print(f"Waiting for {len(running_pods)}/{replicas} yolo-consumer pods to be running...")
+        time.sleep(5)  # Wait for 10 seconds before checking again
+    print("Pods are up!")
 
 # Function to delete the deployment and service
 def clean_up():
@@ -50,6 +54,8 @@ for model in yolo_models:
     print(f"Starting experiment with YOLO_MODEL={model}")
     deploy_application(model)
     print("Application deployed.")
+    print(f"Waiting for {idle_before_start} seconds")
+    time.sleep(idle_before_start)
 
     start_time = get_formatted_time()
     print(start_time)
@@ -62,13 +68,17 @@ for model in yolo_models:
     # Wait for results
     print("Waiting for results.")
     dummy_validate.wait_for_results(image_ids)
-
-    # Clean up the deployment
-    clean_up()
-    
-    collect_data()
+    print(f"Waiting for {idle_after_end} seconds")
+    time.sleep(idle_after_end)
     end_time = get_formatted_time()
+
+    # Clean up the deployment (preferably start this process before data extractor to parallelize them)
+    print(f"Cleaning up...")
+    clean_up()
+
+
     print(end_time)
+    print(f"Extracting data...")
     # data_extractor.create_snapshot(
     #     start_time=start_time,
     #     end_time=end_time,
