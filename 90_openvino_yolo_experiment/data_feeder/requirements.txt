@@ -1,0 +1,13 @@
+confluent-kafka
+Pillow
+opencv-python
+
+bezier
+pandas
+matplotlib
+prometheus_client
+
+gitpython
+gitdb
+smmap
+setuptools==68.2.2

@@ -240,7 +240,7 @@ def run(max_mbps=1, breakpoints=200, duration_seconds=60 * 60 * 2, n_cycles=5, c
         thread_lock.kill()
         log('WORKER & THREADS MANUALLY KILLED..', True)
 
-    return image_count
+    return next(image_count)
 
 if __name__ == '__main__':
     py_args = parser.parse_args()
