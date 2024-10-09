@@ -56,7 +56,7 @@ for model in yolo_models:
 
     # Feed images
     print("Feeding data.")
-    images_sent = dummy_feeder.feed_data(10)
+    images_sent = dummy_feeder.feed_data(100)
     image_ids = set(x for x in range(images_sent))
 
     # Wait for results

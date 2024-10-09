@@ -12,7 +12,7 @@ metadata:
   name: yolo-consumer
   namespace: workloadb
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       run: yolo-consumer
@@ -36,11 +36,11 @@ spec:
               value: "yolo_output"
             - name: KAFKA_SERVERS
               value: "130.233.96.30:10001"
-          resources:
-            limits:
-              cpu: 1000m
-            requests:
-              cpu: 1000m
+          #resources:
+          #  limits:
+          #    cpu: 1000m
+          #  requests:
+          #    cpu: 1000m
 ---
 apiVersion: v1
 kind: Service
