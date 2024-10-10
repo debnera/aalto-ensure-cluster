@@ -11,6 +11,7 @@ import datetime
 # Define the different YOLO_MODEL values to test
 yolo_models = ["yolov8n", "yolov8s", "yolov8m", "yolov8l", "yolov8x"]
 yolo_models = ["yolov8n", "yolov8x"]#, "yolov8m", "yolov8l", "yolov8x"]
+yolo_models = ["yolov8x", "yolov8l"]#, "yolov8m", "yolov8l", "yolov8x"]
 idle_before_start = 0.1*60 # (seconds) Wait for yolo instances to start
 idle_after_end = 0.1*60 # (seconds) Catch the tail of the experiment metrics
 yaml_template_path = "consumer_template.yaml"  # Template for running the experiments
@@ -21,7 +22,7 @@ yaml_experiment_path = None  # This file will be created from the template
 def deploy_application(yolo_model):
     subprocess.run(["kubectl", "apply", "-f", yaml_experiment_path])
 
-    replicas = 2
+    replicas = 1
     subprocess.run(["kubectl", "scale", "deployment", "yolo-consumer", "-n", "workloadb", f"--replicas={replicas}"])
 
     # Wait until 5 instances of pod "yolo-consumer" from namespace "workloadb" are running
@@ -151,7 +152,8 @@ for model in yolo_models:
 
     # Wait for results
     log("Waiting for results.")
-    dummy_validate.wait_for_results(image_ids, msg_callback=yolo_saver.process_event)
+    num_received = dummy_validate.wait_for_results(image_ids, msg_callback=yolo_saver.process_event)
+    log(f"Sent {images_sent}, received {num_received} images.")
     log(f"Waiting for {idle_after_end} seconds")
     time.sleep(idle_after_end)
     end_time = get_formatted_time()
@@ -179,7 +181,11 @@ for model in yolo_models:
     log("Zipping all experiment data...")
     snapshot_path = snapshot_results["path"]
     zip_snapshot(snapshot_path, yolo_csv_folder, name=model)
+    log(f"Zipping done\n")
 
+    log(f"Waiting for any delayed images before the next experiment...")
+    leftover_images = dummy_validate.wait_for_results(image_ids, msg_callback=None, timeout_s=10)
+    log(f"Received {leftover_images} delayed images.")
     log(f"Experiment with YOLO_MODEL={model} completed.\n\n")
 
 log("All experiments completed.")
