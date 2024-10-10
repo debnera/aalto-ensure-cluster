@@ -1,21 +1,7 @@
 import os
 
-from utilz.misc import custom_deserializer, log, create_lock
-from prometheus_client import Counter, Histogram, start_http_server
 import pandas as pd
 import json, copy
-
-# PROMETHEUS METRICS
-yolo_count = Counter('yolo_requests_received', 'Number of processed yolo jobs')
-yolo_pre_time = Histogram('yolo_pre_time', 'Job pre-processing time in seconds')
-yolo_inference_time = Histogram('yolo_inference_time', 'Job inference time in seconds')
-yolo_post_time = Histogram('yolo_post_time', 'Job post-processing time in seconds')
-# yolo_inference_time = Histogram('yolo_inference_time', 'Job processing time in seconds')
-yolo_queue_time = Histogram('yolo_queue_time', 'Job queue time in seconds')
-
-
-
-yolo_total_time_per_worker = Histogram('yolo_total_time_by_source', 'avg of work times for different workers', ['source'])
 
 class YoloToCSV:
 
@@ -24,7 +10,6 @@ class YoloToCSV:
         self.output_path = output_path
         self.print_interval = print_interval
         self.save_interval = save_interval
-        start_http_server(8000)
         # TRACK YOLO RESULTS
         self.history = {
             'total_n': 0
@@ -41,6 +26,9 @@ class YoloToCSV:
         }
 
     def save_to_csv(self):
+        if len(self.data_rows) == 0:
+            print(f"Nothing to save to yolo csv {self.output_path}")
+            return
         if self.output_path is None:
             print(f"Cannot save yolo csv to {self.output_path}")
             return
@@ -96,22 +84,12 @@ class YoloToCSV:
         start_time = yolo_results['timestamps']['start_time']
         end_time = yolo_results['timestamps']['end_time']
 
-        # PUBLISH PROMETHEUS STATISTICS
-        yolo_count.inc()
-        yolo_pre_time.observe(pre)
-        yolo_inference_time.observe(inf)
-        yolo_post_time.observe(post)
-        yolo_queue_time.observe(queue)
-        
-        
-
         dat = copy.deepcopy(self.history)
         for key in self.history.keys():
             # SKIP NON-SOURCES
             if key == 'total_n':
                 continue
             dat[key]['avg_total'] = round((sum(dat[key]['inf']) + sum(dat[key]['pre']) + sum(dat[key]['post']) + sum(dat[key]['queue']) ) / len(dat[key]['inf']), 2)
-            yolo_total_time_per_worker.labels(source=key).observe(dat[key]['avg_total'])	
         
         
 
