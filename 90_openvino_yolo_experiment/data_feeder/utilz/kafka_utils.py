@@ -1,5 +1,5 @@
 from confluent_kafka import Consumer, Producer
-from utilz.misc import log
+from .misc import log
 import sys, time
 
 # GOOD DOCS FOR CONSUMER API
@@ -20,6 +20,7 @@ class create_producer:
 
     # ON LOAD, CREATE KAFKA PRODUCER
     def __init__(self, kafka_servers=KAFKA_SERVERS):
+        self.kafka_servers = kafka_servers
         self.kafka_client = Producer({
             'bootstrap.servers': kafka_servers,
         })
@@ -31,7 +32,7 @@ class create_producer:
             log('SUCCESSFULLY CONNECTED TO KAFKA')
             return True
         except:
-            log(f'COULD NOT CONNECT WITH KAFKA SERVER ({KAFKA_SERVERS})')
+            log(f'COULD NOT CONNECT WITH KAFKA SERVER ({self.kafka_servers})')
             return False
 
     # ON CONSUMER CALLBACK, DO..
@@ -140,7 +141,6 @@ class create_consumer:
 
                 # HANDLE THE EVENT VIA CALLBACK FUNC
                 if VERBOSE: log(f'THREAD {nth_thread}: EVENT RECEIVED ({self.kafka_topic})')
-
                 on_message(msg.value(), msg.key(), int(time.time() * 1000), msg.timestamp()[1])
                 if VERBOSE: log(f'THREAD {nth_thread}: EVENT HANDLED')
 

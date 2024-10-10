@@ -1,8 +1,9 @@
 import cv2
+import numpy as np
 
-from utilz.dataset_utils import load_dataset
-from utilz.misc import resource_exists, log, create_lock, resize_array
-from utilz.kafka_utils import create_producer
+from .utilz.dataset_utils import load_dataset
+from .utilz.misc import resource_exists, log, create_lock, resize_array
+from .utilz.kafka_utils import create_producer
 from threading import Thread, Semaphore
 import time, math, random, argparse
 import itertools
@@ -47,13 +48,22 @@ parser.add_argument(
          "before this compression, and compression will not affect it.",
 )
 
-def run(max_mbps=1, breakpoints=200, duration_seconds=60 * 60 * 2, n_cycles=5, compress_to_jpeg=False, dataset_path="./datasets/"):
+def run(max_mbps=1, breakpoints=200, duration_seconds=60 * 60 * 2, n_cycles=5, compress_to_jpeg=False, dataset_path="./data_feeder/datasets/mini.hdf5"):
+    """
+    Hackish wrapper, since I do not want to deal with all the different return statements scattered around run
+    """
+    image_count = itertools.count()
+    run2(image_count, max_mbps, breakpoints, duration_seconds, n_cycles, compress_to_jpeg, dataset_path)
+    return next(image_count)
+
+def run2(image_count, max_mbps=1, breakpoints=200, duration_seconds=60 * 60 * 2, n_cycles=5, compress_to_jpeg=False, dataset_path="./data_feeder/datasets/mini.hdf5"):
 
 
 
     # DYNAMIC ARGUMENTS
     args = {
         'dataset': {
+            'dataset_path': dataset_path,
             'name': 'mini',
             'max_frames': -1,
             'max_vehicles': -1,
@@ -74,13 +84,12 @@ def run(max_mbps=1, breakpoints=200, duration_seconds=60 * 60 * 2, n_cycles=5, c
     ########################################################################################
 
     # MAKE SURE THE HDF5 DATASET EXISTS
-    if not resource_exists(f'{dataset_path}{args["dataset"]["name"]}.hdf5'):
+    if not resource_exists(f'{dataset_path}'):
         return
     
     # INSTANTIATE THREAD LOCKS
     thread_lock = create_lock()
     semaphore = Semaphore(1)
-    image_count = itertools.count()
 
     # KEEP TRACK THREADS AND KAFKA PRODUCERS
     threads = []
@@ -187,14 +196,16 @@ def run(max_mbps=1, breakpoints=200, duration_seconds=60 * 60 * 2, n_cycles=5, c
 
             # SELECT NEXT BUFFER ITEM
             image = dataset[next_index]
-            if compress_to_jpeg:
+            if compress_to_jpeg and type(image) is np.array:
                 # Cuts image size by over 60 %
+                # TODO: This breaks if dataset already has images in bytes, instead of numpy array
                 _, buffer = cv2.imencode('.jpg', image)
                 img_as_bytes = buffer.tobytes()
             else:
-                img_as_bytes = image.tobytes()
+                # img_as_bytes = image.tobytes()
+                img_as_bytes = image
             image_id = next(image_count)
-            image_id_encoded = str(image_id).encode('utf-8'),
+            image_id_encoded = str(image_id).encode('utf-8')
             kafka_producers[nth_thread - 1].push_msg('yolo_input', img_as_bytes, key=image_id_encoded)
             
             # FETCH THE LATEST ACTION COOLDOWN

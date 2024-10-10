@@ -39,15 +39,8 @@ parser.add_argument(
     default=5,
     help="How many day-night cycles should be performed",
 )
-parser.add_argument(
-    "--compress",
-    type=bool,
-    default=False,
-    help="Reduce amount of data sent through Kafka by compressing images to JPEG. The max throughput mbps is computed"
-         "before this compression, and compression will not affect it.",
-)
 
-def run(max_mbps=1, breakpoints=200, duration_seconds=60 * 60 * 2, n_cycles=5, compress_to_jpeg=False):
+def run(max_mbps=1, breakpoints=200, duration_seconds=60 * 60 * 2, n_cycles=5):
 
 
 
@@ -187,12 +180,7 @@ def run(max_mbps=1, breakpoints=200, duration_seconds=60 * 60 * 2, n_cycles=5, c
 
             # SELECT NEXT BUFFER ITEM
             image = dataset[next_index]
-            if compress_to_jpeg:
-                # Cuts image size by over 60 %
-                _, buffer = cv2.imencode('.jpg', image)
-                img_as_bytes = buffer.tobytes()
-            else:
-                img_as_bytes = image.tobytes()
+            img_as_bytes = image.tobytes()
             image_id = next(image_count)
             kafka_producers[nth_thread - 1].push_msg('yolo_input', img_as_bytes)
             

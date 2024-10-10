@@ -64,7 +64,7 @@ def load_dataset(args):
     container = []
 
     # EXTRACT DATASET COMPONENTS
-    dataset = h5py.File(f'./datasets/{args["name"]}.hdf5', 'r')
+    dataset = h5py.File(f'{args["dataset_path"]}', 'r')
     activity = dataset['is_enabled']
     sensors = dataset['sensors']
     total_sensors = len(sensors.keys())

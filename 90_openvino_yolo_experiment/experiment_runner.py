@@ -4,14 +4,14 @@ import subprocess
 import time
 import yaml
 import create_deployment_yaml
-from data_feeder import dummy_feeder, dummy_validate, yolo_to_csv
+from data_feeder import dummy_feeder, dummy_validate, yolo_to_csv, day_night_feeder
 from data_extractor import extractor
 import datetime
 
 # Define the different YOLO_MODEL values to test
 yolo_models = ["yolov8n", "yolov8s", "yolov8m", "yolov8l", "yolov8x"]
-yolo_models = ["yolov8n", "yolov8x"]#, "yolov8m", "yolov8l", "yolov8x"]
-yolo_models = ["yolov8x", "yolov8l"]#, "yolov8m", "yolov8l", "yolov8x"]
+yolo_models = ["yolov8n", "yolov8s"]#, "yolov8m", "yolov8l", "yolov8x"]
+# yolo_models = ["yolov8x", "yolov8l"]#, "yolov8m", "yolov8l", "yolov8x"]
 idle_before_start = 0.1*60 # (seconds) Wait for yolo instances to start
 idle_after_end = 0.1*60 # (seconds) Catch the tail of the experiment metrics
 yaml_template_path = "consumer_template.yaml"  # Template for running the experiments
@@ -24,8 +24,11 @@ def deploy_application(yolo_model):
 
     replicas = 1
     subprocess.run(["kubectl", "scale", "deployment", "yolo-consumer", "-n", "workloadb", f"--replicas={replicas}"])
+    wait_for_amount_replicas(replicas)
 
-    # Wait until 5 instances of pod "yolo-consumer" from namespace "workloadb" are running
+
+
+def wait_for_amount_replicas(num_replicas):
     while True:
         result = subprocess.run(
             ["kubectl", "get", "pods", "-n", "workloadb", "-l", "run=yolo-consumer", "-o", "yaml"],
@@ -34,10 +37,25 @@ def deploy_application(yolo_model):
         )
         pods = yaml.safe_load(result.stdout)
         running_pods = [pod for pod in pods["items"] if pod["status"]["phase"] == "Running"]
-        if len(running_pods) >= replicas:
+        if len(running_pods) == num_replicas:
             break
-        log(f"Waiting for {len(running_pods)}/{replicas} yolo-consumer pods to be running...")
+        log(f"Waiting for {len(running_pods)}/{num_replicas} yolo-consumer pods to be running...")
         time.sleep(5)  # Wait for 10 seconds before checking again
+
+def wait_for_terminate(num_replicas):
+    while True:
+        result = subprocess.run(
+            ["kubectl", "get", "pods", "-n", "workloadb", "-l", "run=yolo-consumer", "-o", "yaml"],
+            capture_output=True,
+            text=True
+        )
+        pods = yaml.safe_load(result.stdout)
+        running_pods = [pod for pod in pods["items"] if pod["status"]["phase"] == "Running" or pod["status"]["phase"] == "Terminating"]
+        if len(running_pods) == num_replicas:
+            break
+        log(f"Waiting for {len(running_pods)}/{num_replicas} yolo-consumer pods to completely stop...")
+        time.sleep(5)  # Wait for 10 seconds before checking again
+
 
 # Function to delete the deployment and service
 def clean_up():
@@ -108,6 +126,12 @@ def zip_snapshot(snapshot_path, yolo_csv_folder=None, name="yolov8n"):
     log(f"Zip file size: {zip_size / (1024 * 1024):.2f} MB")
     log(f"Zip file path: {zip_filepath}")
 
+log(f"Removing any leftover containers from previous experiments...")
+clean_up()
+wait_for_terminate(0)
+log(f"Waiting for any delayed images before the next experiment...")
+leftover_images = dummy_validate.wait_for_results({-1}, msg_callback=None, timeout_s=5)
+log(f"Received {leftover_images} delayed images.")
 
 for model in yolo_models:
     log(f"Starting experiment with YOLO_MODEL={model}")
@@ -127,8 +151,8 @@ for model in yolo_models:
 
     # Check that the applications are ready
     log("")
-    log("Sending one image to check that at least one pod can process data.")
-    images_sent = dummy_feeder.feed_data(1)
+    log("Sending some images to check that at least one pod can process data.")
+    images_sent = dummy_feeder.feed_data(5)
     image_ids = set(x for x in range(images_sent))
     log("Waiting for results on the test image.")
     num_received = dummy_validate.wait_for_results(image_ids, msg_callback=None, timeout_s=600)
@@ -147,8 +171,10 @@ for model in yolo_models:
     # Feed images
     log("")
     log("Feeding data.")
-    images_sent = dummy_feeder.feed_data(100)
+    # images_sent = dummy_feeder.feed_data(100)
+    images_sent = day_night_feeder.run(2, 200, 30, 3, False)
     image_ids = set(x for x in range(images_sent))
+    log(f"Completed sending {images_sent} images.\n")
 
     # Wait for results
     log("Waiting for results.")

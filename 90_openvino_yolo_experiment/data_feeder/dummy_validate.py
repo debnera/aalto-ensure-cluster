@@ -20,8 +20,7 @@ def wait_for_results(image_ids, msg_callback=None, timeout_s=10):
         value_deserializer=lambda x: json.loads(x.decode('utf-8'))
     )
     image_ids = set(str(x) for x in image_ids)  # Make sure the ids are strings, as kafka gives them as strings
-    print(f"Sent image IDs: {image_ids}")
-    print("Waiting for messages from 'yolo_output'...")
+    print(f"Waiting for {len(image_ids)} images")
 
     received_ids = set()
     duplicates = 0
