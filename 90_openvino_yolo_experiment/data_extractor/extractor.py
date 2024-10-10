@@ -1,4 +1,4 @@
-import utilz
+from . import extractor_utils
 import requests, os, time, argparse
 from datetime import datetime
 from threading import Thread, Semaphore
@@ -11,7 +11,7 @@ def process_metric(base_path: str, prometheus_endpoint: str, query: str, formatt
 
     # PROMETHEUS ONLY ALLOWS QUERIES WITH LESS THAN 11K ROWS
     # SEGMENT LARGE TIMESTAMPS INTO SMALLER PAIRS TO BYPASS THIS LIMITATION
-    ts_segments = utilz.segment_timestamps(formatted_start, formatted_end, segment_size)
+    ts_segments = extractor_utils.segment_timestamps(formatted_start, formatted_end, segment_size)
 
     # LOOP THROUGH EACH SEGMENT, COMBINING THEIR QUERY OUTPUT
     for t1, t2 in ts_segments:
@@ -21,7 +21,7 @@ def process_metric(base_path: str, prometheus_endpoint: str, query: str, formatt
         results = requests.get(URL).json()
 
         # SAVE THE JSON DUMP
-        utilz.json_save(f'{dir_path}/{t1}-{t2}.json', results)
+        extractor_utils.json_save(f'{dir_path}/{t1}-{t2}.json', results)
 
     # INCREMENT THE TRACKER & MAKE ROOM FOR THE NEXT THREAD
     tracker.increment(query)
@@ -32,7 +32,7 @@ def create_snapshot(start_time: str, end_time: str, sampling: int, segment_size:
     # GENERATE UNIQUE SNAPSHOT PATH & CREATE DIR FOR IT
     now = str(int(time.time()))
     snapshot_path = f'snapshots/{now}'
-    os.mkdir(snapshot_path)
+    os.makedirs(snapshot_path, exist_ok=True)
 
     # CONVERT DATES TO UNIX TIMESTAMPS
     date_format = '%Y-%m-%d %H:%M:%S'
@@ -43,18 +43,18 @@ def create_snapshot(start_time: str, end_time: str, sampling: int, segment_size:
     # FILTER: EXCLUDE PROMETHEUS, GRAFANA AND ALERTMANAGER METRICS
     s1_filter = lambda metric: metric.startswith('prometheus_') or metric.startswith('grafana_') or metric.startswith('alertmanager_')
     s1_endpoint = 'localhost:9090'
-    s1_metrics = utilz.get_metric_names(s1_endpoint, s1_filter)
+    s1_metrics = extractor_utils.get_metric_names(s1_endpoint, s1_filter)
 
     # PROMETHEUS SERVER 2 METRICS
     # FILTER: ONLY INCLUDE KAFKA METRICS
     s2_filter = lambda metric: not metric.startswith('kafka_')
     s2_endpoint = 'localhost:9091'
-    s2_metrics = utilz.get_metric_names(s2_endpoint, s2_filter)
+    s2_metrics = extractor_utils.get_metric_names(s2_endpoint, s2_filter)
 
     # SAFELY MAKE REQUESTS CONCURRENTLY WITH SEMAPHORE PROTECTION
     thread_lock = Semaphore(n_threads)
     n_metrics = len(s1_metrics) + len(s2_metrics)
-    tracker = utilz.Tracker(n_metrics)
+    tracker = extractor_utils.Tracker(n_metrics)
     threads = []
 
     # MAKE PROMETHEUS SERVER2 QUERIES
@@ -100,13 +100,13 @@ def create_snapshot(start_time: str, end_time: str, sampling: int, segment_size:
 
     # FINALLY, PRINT OUT EXTRACTION STATS
     delta_time = round(time.time() - tracker.exp_start, 2)
-    num_bytes = utilz.path_bytes(snapshot_path)
+    num_bytes = extractor_utils.path_bytes(snapshot_path)
     num_mbs = round(num_bytes / 10**6, 2)
 
     print('', flush=True)
-    utilz.pad_print(['EXTRACTION DURATION:', f'{delta_time}s'], 35)
-    utilz.pad_print(['SNAPSHOT PATH:', snapshot_path], 35)
-    utilz.pad_print(['SNAPSHOT BYTES:', f'{num_bytes} ({num_mbs} MB)'], 35)
+    extractor_utils.pad_print(['EXTRACTION DURATION:', f'{delta_time}s'], 35)
+    extractor_utils.pad_print(['SNAPSHOT PATH:', snapshot_path], 35)
+    extractor_utils.pad_print(['SNAPSHOT BYTES:', f'{num_bytes} ({num_mbs} MB)'], 35)
 
 #############################################################################################################################
 #############################################################################################################################
