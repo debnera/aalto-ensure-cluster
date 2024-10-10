@@ -47,9 +47,15 @@ def create_snapshot(start_time: str, end_time: str, sampling: int, segment_size:
 
     # PROMETHEUS SERVER 2 METRICS
     # FILTER: ONLY INCLUDE KAFKA METRICS
-    s2_filter = lambda metric: not metric.startswith('kafka_')
-    s2_endpoint = 'localhost:9091'
-    s2_metrics = extractor_utils.get_metric_names(s2_endpoint, s2_filter)
+    s2_connected = True
+    try:
+        s2_filter = lambda metric: not metric.startswith('kafka_')
+        s2_endpoint = 'localhost:9091'
+        s2_metrics = extractor_utils.get_metric_names(s2_endpoint, s2_filter)
+    except:
+        print("Could not connect to Prometheus Server 2.")
+        s2_connected = False
+        s2_metrics = []
 
     # SAFELY MAKE REQUESTS CONCURRENTLY WITH SEMAPHORE PROTECTION
     thread_lock = Semaphore(n_threads)
@@ -62,14 +68,14 @@ def create_snapshot(start_time: str, end_time: str, sampling: int, segment_size:
         thread_lock.acquire()
 
         thread = Thread(target=process_metric, args=(
-            snapshot_path, 
-            s1_endpoint, 
-            metric, 
-            formatted_start, 
-            formatted_end, 
+            snapshot_path,
+            s1_endpoint,
+            metric,
+            formatted_start,
+            formatted_end,
             sampling,
             segment_size,
-            thread_lock, 
+            thread_lock,
             tracker
         ))
 
@@ -77,23 +83,24 @@ def create_snapshot(start_time: str, end_time: str, sampling: int, segment_size:
         thread.start()
 
     # MAKE PROMETHEUS SERVER2 QUERIES
-    for metric in s2_metrics:
-        thread_lock.acquire()
+    if s2_connected:
+        for metric in s2_metrics:
+            thread_lock.acquire()
 
-        thread = Thread(target=process_metric, args=(
-            snapshot_path, 
-            s2_endpoint, 
-            metric, 
-            formatted_start, 
-            formatted_end, 
-            sampling, 
-            segment_size,
-            thread_lock, 
-            tracker
-        ))
+            thread = Thread(target=process_metric, args=(
+                snapshot_path,
+                s2_endpoint,
+                metric,
+                formatted_start,
+                formatted_end,
+                sampling,
+                segment_size,
+                thread_lock,
+                tracker
+            ))
 
-        threads.append(thread)
-        thread.start()
+            threads.append(thread)
+            thread.start()
 
     # WAIT FOR ALL THREADS TO FINISH
     [thread.join() for thread in threads]
@@ -107,6 +114,7 @@ def create_snapshot(start_time: str, end_time: str, sampling: int, segment_size:
     extractor_utils.pad_print(['EXTRACTION DURATION:', f'{delta_time}s'], 35)
     extractor_utils.pad_print(['SNAPSHOT PATH:', snapshot_path], 35)
     extractor_utils.pad_print(['SNAPSHOT BYTES:', f'{num_bytes} ({num_mbs} MB)'], 35)
+    return {"path": snapshot_path, "size_mb": num_mbs, "duration": delta_time}
 
 #############################################################################################################################
 #############################################################################################################################
