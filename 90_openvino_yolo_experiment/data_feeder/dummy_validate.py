@@ -6,7 +6,7 @@ from kafka.errors import KafkaTimeoutError
 
 
 # Configure the Kafka consumer
-def wait_for_results(image_ids, timeout_s=10):
+def wait_for_results(image_ids, msg_callback=None, timeout_s=10):
     kafka_servers = 'localhost:10001,localhost:10002,localhost:10003'
     consumer = KafkaConsumer(
         'yolo_output',
@@ -62,6 +62,8 @@ def wait_for_results(image_ids, timeout_s=10):
                     print(f"Image id not included in kafka message! (error count: {errors})")
                     errors += 1
                     continue
+                if msg_callback is not None:
+                    msg_callback(message.value)
                 if img_id in received_ids:
                     # Should never go here
                     print(f"WARNING: Received duplicate of id: {img_id} with timestamp: {message.value['timestamps']}")

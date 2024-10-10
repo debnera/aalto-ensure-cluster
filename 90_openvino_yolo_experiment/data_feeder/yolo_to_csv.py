@@ -1,26 +1,9 @@
 import os
 
-from utilz.kafka_utils import create_consumer
 from utilz.misc import custom_deserializer, log, create_lock
 from prometheus_client import Counter, Histogram, start_http_server
 import pandas as pd
 import json, copy
-import argparse
-
-parser = argparse.ArgumentParser()
-parser.add_argument("--save_interval", type=int,
-                    help="Number of result rows to save in a single csv file.",
-                    default=200)
-parser.add_argument("--print_interval", type=int,
-                    help="Number of result rows included in a single print.",
-                    default=20)
-parser.add_argument("--input_topic", type=str,
-                    help="Kafka topic to listen for yolo results.",
-                    default="yolo_output")
-parser.add_argument("--output_path", type=str,
-                    help="Results will be saved to this directory",
-                    default="./yolo_outputs/")
-args = parser.parse_args()
 
 # PROMETHEUS METRICS
 yolo_count = Counter('yolo_requests_received', 'Number of processed yolo jobs')
@@ -34,16 +17,42 @@ yolo_queue_time = Histogram('yolo_queue_time', 'Job queue time in seconds')
 
 yolo_total_time_per_worker = Histogram('yolo_total_time_by_source', 'avg of work times for different workers', ['source'])
 
-
-class Validator:
+class YoloToCSV:
 
     output_counter = 0
+    def __init__(self, output_path=None, print_interval=20, save_interval=1000):
+        self.output_path = output_path
+        self.print_interval = print_interval
+        self.save_interval = save_interval
+        start_http_server(8000)
+        # TRACK YOLO RESULTS
+        self.history = {
+            'total_n': 0
+        }
+        self.data_rows = []
 
-    def save_to_csv(self, rows):
-        df = pd.DataFrame(rows)
-        os.makedirs(os.path.dirname(args.output_path), exist_ok=True)
-        df.to_csv(os.path.join(args.output_path, f"{self.output_counter}.csv"))
-        self.output_counter += 1	
+        # SOURCE DEFAULT VALUES
+        self.default = {
+            'pre': [0] * self.print_interval,
+            'inf': [0] * self.print_interval,
+            'post': [0] * self.print_interval,
+            'queue': [0] * self.print_interval,
+            'n': 0,
+        }
+
+    def save_to_csv(self):
+        if self.output_path is None:
+            print(f"Cannot save yolo csv to {self.output_path}")
+            return
+        df = pd.DataFrame(self.data_rows)
+        os.makedirs(os.path.dirname(self.output_path), exist_ok=True)
+        df.to_csv(os.path.join(self.output_path, f"{self.output_counter}.csv"))
+        self.output_counter += 1
+        self.data_rows = []
+
+
+    def __del__(self):
+        self.save_to_csv()
 
     def format_response(self, data):
         response = copy.deepcopy(data)
@@ -69,23 +78,21 @@ class Validator:
         # FINALLY, PRINT THE FINDINGS
         print(json.dumps(response, indent=4))	
 
-    def process_event(self, raw_bytes, nth_thread):
+    def process_event(self, msg_dict):
 
         # SERIALIZE THE YOLO RESULTS
-        yolo_results = custom_deserializer(raw_bytes)
+        # yolo_results = custom_deserializer(raw_bytes)
+        yolo_results = msg_dict
         print(yolo_results['timestamps'])
         source = yolo_results['source']
         model = yolo_results['model']
         dimensions = yolo_results['dimensions']
+        img_id = yolo_results['id']
         pre = yolo_results['timestamps']['pre']
         inf = yolo_results['timestamps']['inf']
         post = yolo_results['timestamps']['post']
-        queue = 10
-        if 'queue' in yolo_results['timestamps'].keys():
-            queue = yolo_results['timestamps']['queue']
-        else:	
-            print("theres soemthing sus going on here")
-        
+        queue = yolo_results['timestamps']['queue']
+
         start_time = yolo_results['timestamps']['start_time']
         end_time = yolo_results['timestamps']['end_time']
 
@@ -118,7 +125,8 @@ class Validator:
             'post': post,
             'queue': queue,
             'start_time': start_time,
-            'end_time': end_time
+            'end_time': end_time,
+            'id': img_id,
         })
 
         # ADD SOURCE IF IT DOESNT ALREADY EXIST
@@ -126,7 +134,7 @@ class Validator:
             self.history[source] = copy.deepcopy(self.default)
 
         # FIND NEXT ROLLING INDEX
-        next_index = self.history[source]['n'] % args.print_interval
+        next_index = self.history[source]['n'] % self.print_interval
 
         # PUSH YOLO RESULTS
         self.history[source]['pre'][next_index] = pre
@@ -139,63 +147,11 @@ class Validator:
         self.history['total_n'] += 1
 
         # PRINT AGGREGATE VALUES EVERY FULL WINDOW
-        if self.history['total_n'] % args.print_interval == 0:
+        if self.history['total_n'] % self.print_interval == 0:
             self.format_response(self.history)
 
-        if len(self.data_rows) % args.save_interval == 0:
-            self.save_to_csv(self.data_rows)
-            self.data_rows = []
+        if len(self.data_rows) % self.save_interval == 0:
+            self.save_to_csv()
 
-    def run(self):
-
-        ########################################################################################
-        ########################################################################################
-
-        # CREATE KAFKA CLIENTS
-        kafka_consumer = create_consumer(args.input_topic)
-        thread_lock = create_lock()
-
-        # MAKE SURE KAFKA CONNECTIONS ARE OK
-        if not kafka_consumer.connected():
-            print("Could not connect to Kafka - exiting")
-            return
-
-        # TRACK YOLO RESULTS
-        self.history = {
-            'total_n': 0
-        }
-        self.data_rows = []
-
-        # SOURCE DEFAULT VALUES
-        self.default = {
-            'pre': [0] * args.print_interval,
-            'inf': [0] * args.print_interval,
-            'post': [0] * args.print_interval,
-            'queue': [0] * args.print_interval,
-            'n': 0,
-        }
-
-
-
-        # FORMAT HISTORICAL DATA
-
-        # ON EVENT, DO..
-
-
-        # FINALLY, START CONSUMING EVENTS
-        try:
-            kafka_consumer.poll_next(1, thread_lock, self.process_event)
-
-        # TERMINATE MAIN PROCESS AND KILL HELPER THREADS
-        except KeyboardInterrupt:
-            thread_lock.kill()
-            log('WORKER MANUALLY KILLED..', True)
-
-
-if __name__ == '__main__':
-    start_http_server(8000)
-    validator = Validator()
-    validator.run()
-    #validator.save_to_csv([{"a":1, "b":1},{"a":2, "b":2}])
 
 

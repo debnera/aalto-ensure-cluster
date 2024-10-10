@@ -2,7 +2,7 @@ import logging
 import subprocess
 import time
 import yaml
-from data_feeder import dummy_feeder, dummy_validate
+from data_feeder import dummy_feeder, dummy_validate, yolo_to_csv
 import deploy_experiment
 from data_extractor import extractor
 import datetime
@@ -62,15 +62,22 @@ def get_formatted_time():
     return formatted_time
 
 
-def zip_snapshot(snapshot_path):
+def zip_snapshot(snapshot_path, yolo_csv_folder=None, name="yolov8n"):
     import os
     import zipfile
     import shutil
 
     start_zip_time = time.time()
 
+    # Copy yolo CSVs
+    if yolo_csv_folder is not None:
+        # Copy contents from yolo_csv_folder to snapshot_path
+        destination_yolo_folder = os.path.join(snapshot_path, "yolo_outputs")
+        shutil.copytree(yolo_csv_folder, destination_yolo_folder)
+        log(f"Copied YOLO CSV files from {yolo_csv_folder} to {destination_yolo_folder}")
+
     # Create a zip file from the snapshot_path
-    zip_filename = f"{int(start_zip_time)}_{model}.zip"
+    zip_filename = f"{int(start_zip_time)}_{name}.zip"
     zip_filepath = os.path.join(os.path.dirname(snapshot_path), zip_filename)
 
     with zipfile.ZipFile(zip_filepath, 'w', zipfile.ZIP_DEFLATED) as zipf:
@@ -88,7 +95,9 @@ def zip_snapshot(snapshot_path):
     delete_original = True  # Set this to False if you do not want to delete
     if delete_original:
         shutil.rmtree(snapshot_path)
-        log(f"Deleting original files in {snapshot_path}")
+        if yolo_csv_folder is not None:
+            shutil.rmtree(yolo_csv_folder)
+        log(f"Deleting original files in {snapshot_path} and {yolo_csv_folder}")
 
     # Log the details
     log(f"Zipping completed in {zip_duration:.2f} seconds")
@@ -98,6 +107,11 @@ def zip_snapshot(snapshot_path):
 
 for model in yolo_models:
     log(f"Starting experiment with YOLO_MODEL={model}")
+
+    log("Starting to log yolo results to ")
+    yolo_csv_folder = f"yolo_outputs/{time.time()}_{model}/"
+    yolo_saver = yolo_to_csv.YoloToCSV(yolo_csv_folder)
+
     deploy_application(model)
     log("Application deployed.")
 
@@ -105,7 +119,7 @@ for model in yolo_models:
     images_sent = dummy_feeder.feed_data(1)
     image_ids = set(x for x in range(images_sent))
     log("Waiting for results on the test image.")
-    num_received = dummy_validate.wait_for_results(image_ids, timeout_s=300)
+    num_received = dummy_validate.wait_for_results(image_ids, msg_callback=None, timeout_s=300)
     if num_received != images_sent:
         log("Test timed out!")
         # TODO: How to handle this situation?
@@ -125,7 +139,7 @@ for model in yolo_models:
 
     # Wait for results
     log("Waiting for results.")
-    dummy_validate.wait_for_results(image_ids)
+    dummy_validate.wait_for_results(image_ids, msg_callback=yolo_saver.process_event)
     log(f"Waiting for {idle_after_end} seconds")
     time.sleep(idle_after_end)
     end_time = get_formatted_time()
@@ -133,6 +147,7 @@ for model in yolo_models:
     # Clean up the deployment (preferably start this process before data extractor to parallelize them)
     log(f"Cleaning up...")
     clean_up()
+    yolo_saver.save_to_csv()
 
 
     log(end_time)
@@ -146,10 +161,11 @@ for model in yolo_models:
     )
     log("Data extracted.")
     log(snapshot_results)
+
+    # Zip all experiment data and delete unzipped data
+    log("Zipping all experiment data...")
     snapshot_path = snapshot_results["path"]
-
-    zip_snapshot(snapshot_path)
-
+    zip_snapshot(snapshot_path, yolo_csv_folder, name=model)
 
     log(f"Experiment with YOLO_MODEL={model} completed.\n\n")
 
