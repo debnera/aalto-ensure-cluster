@@ -100,15 +100,27 @@ for model in yolo_models:
     log(f"Starting experiment with YOLO_MODEL={model}")
     deploy_application(model)
     log("Application deployed.")
-    log(f"Waiting for {idle_before_start} seconds")
-    time.sleep(idle_before_start)
 
+    log("Sending one image that at least one pod can process data.")
+    images_sent = dummy_feeder.feed_data(1)
+    image_ids = set(x for x in range(images_sent))
+    log("Waiting for results on the test image.")
+    num_received = dummy_validate.wait_for_results(image_ids, timeout_s=300)
+    if num_received != images_sent:
+        log("Test timed out!")
+        # TODO: How to handle this situation?
+    else:
+        log("Test successful.")
+
+    # Start measuring the cluster from this point forwards
     start_time = get_formatted_time()
     log(start_time)
+    log(f"Waiting for {idle_before_start} seconds")
+    time.sleep(idle_before_start)  # Wait for slower consumers to start and to give some slack on the measurement data
 
     # Feed images
     log("Feeding data.")
-    images_sent = dummy_feeder.feed_data(10000)
+    images_sent = dummy_feeder.feed_data(1000)
     image_ids = set(x for x in range(images_sent))
 
     # Wait for results

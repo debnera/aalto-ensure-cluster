@@ -36,7 +36,7 @@ def feed_data(n_images=100):
         image_ids.add(str(i))
         # producer.send('yolo_input', value=img_as_bytes)
 
-        # producer.flush()
+        producer.flush()
         print(f"Sent image {i} to Kafka, {len(img_as_bytes)} bytes")
         # time.sleep(0.5)  # to simulate some delay between sends
 
