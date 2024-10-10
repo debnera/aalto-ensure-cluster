@@ -1,7 +1,9 @@
 import logging
+import os
 import subprocess
 import time
 import yaml
+import create_deployment_yaml
 from data_feeder import dummy_feeder, dummy_validate, yolo_to_csv
 import deploy_experiment
 from data_extractor import extractor
@@ -12,13 +14,17 @@ yolo_models = ["yolov8n", "yolov8s", "yolov8m", "yolov8l", "yolov8x"]
 yolo_models = ["yolov8n", "yolov8s"]#, "yolov8m", "yolov8l", "yolov8x"]
 idle_before_start = 0.1*60 # (seconds) Wait for yolo instances to start
 idle_after_end = 0.5*60 # (seconds) Catch the tail of the experiment metrics
+yaml_template_path = "consumer_template.yaml"  # Template for running the experiments
+yaml_experiment_path = None  # This file will be created from the template
 
 
 # Function to deploy the application
 def deploy_application(yolo_model):
     # deploy_experiment.deploy_application(yolo_model)
     subprocess.run(["kubectl", "apply", "-f", "ov_deployment.yaml"])
+
     replicas = 2
+    subprocess.run(["kubectl", "scale", "deployment", "yolo-consumer", "-n", "workloadb", f"--replicas={replicas}"])
 
     # Wait until 5 instances of pod "yolo-consumer" from namespace "workloadb" are running
     while True:
@@ -112,14 +118,20 @@ for model in yolo_models:
     yolo_csv_folder = f"yolo_outputs/{time.time()}_{model}/"
     yolo_saver = yolo_to_csv.YoloToCSV(yolo_csv_folder)
 
+    # Update yaml and deploy
+    yaml_config = {"YOLO_MODEL": model}
+    yaml_experiment_path = os.path.join(os.path.dirname(yolo_csv_folder), "consumer.yaml")
+    log(f"Creating a new deployment YAML with config {yaml_config} to {yaml_experiment_path}")
+    create_deployment_yaml.update_yolo_model(yaml_template_path, yaml_experiment_path, yaml_config)
     deploy_application(model)
     log("Application deployed.")
 
+    # Check that the applications are ready
     log("Sending one image that at least one pod can process data.")
     images_sent = dummy_feeder.feed_data(1)
     image_ids = set(x for x in range(images_sent))
     log("Waiting for results on the test image.")
-    num_received = dummy_validate.wait_for_results(image_ids, msg_callback=None, timeout_s=300)
+    num_received = dummy_validate.wait_for_results(image_ids, msg_callback=None, timeout_s=600)
     if num_received != images_sent:
         log("Test timed out!")
         # TODO: How to handle this situation?
