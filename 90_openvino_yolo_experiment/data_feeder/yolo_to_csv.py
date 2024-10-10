@@ -8,6 +8,7 @@ class YoloToCSV:
     output_counter = 0
     def __init__(self, output_path=None, print_interval=20, save_interval=1000):
         self.output_path = output_path
+        os.makedirs(os.path.dirname(self.output_path), exist_ok=True)
         self.print_interval = print_interval
         self.save_interval = save_interval
         # TRACK YOLO RESULTS
@@ -33,7 +34,6 @@ class YoloToCSV:
             print(f"Cannot save yolo csv to {self.output_path}")
             return
         df = pd.DataFrame(self.data_rows)
-        os.makedirs(os.path.dirname(self.output_path), exist_ok=True)
         df.to_csv(os.path.join(self.output_path, f"{self.output_counter}.csv"))
         self.output_counter += 1
         self.data_rows = []
@@ -64,14 +64,14 @@ class YoloToCSV:
             del response[key]['pre']
 
         # FINALLY, PRINT THE FINDINGS
-        print(json.dumps(response, indent=4))	
+        # print(json.dumps(response, indent=4))
 
     def process_event(self, msg_dict):
 
         # SERIALIZE THE YOLO RESULTS
         # yolo_results = custom_deserializer(raw_bytes)
         yolo_results = msg_dict
-        print(yolo_results['timestamps'])
+        # print(yolo_results['timestamps'])
         source = yolo_results['source']
         model = yolo_results['model']
         dimensions = yolo_results['dimensions']

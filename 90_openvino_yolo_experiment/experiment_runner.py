@@ -5,23 +5,21 @@ import time
 import yaml
 import create_deployment_yaml
 from data_feeder import dummy_feeder, dummy_validate, yolo_to_csv
-import deploy_experiment
 from data_extractor import extractor
 import datetime
 
 # Define the different YOLO_MODEL values to test
 yolo_models = ["yolov8n", "yolov8s", "yolov8m", "yolov8l", "yolov8x"]
-yolo_models = ["yolov8n", "yolov8s"]#, "yolov8m", "yolov8l", "yolov8x"]
+yolo_models = ["yolov8n", "yolov8x"]#, "yolov8m", "yolov8l", "yolov8x"]
 idle_before_start = 0.1*60 # (seconds) Wait for yolo instances to start
-idle_after_end = 0.5*60 # (seconds) Catch the tail of the experiment metrics
+idle_after_end = 0.1*60 # (seconds) Catch the tail of the experiment metrics
 yaml_template_path = "consumer_template.yaml"  # Template for running the experiments
 yaml_experiment_path = None  # This file will be created from the template
 
 
 # Function to deploy the application
 def deploy_application(yolo_model):
-    # deploy_experiment.deploy_application(yolo_model)
-    subprocess.run(["kubectl", "apply", "-f", "ov_deployment.yaml"])
+    subprocess.run(["kubectl", "apply", "-f", yaml_experiment_path])
 
     replicas = 2
     subprocess.run(["kubectl", "scale", "deployment", "yolo-consumer", "-n", "workloadb", f"--replicas={replicas}"])
@@ -42,7 +40,6 @@ def deploy_application(yolo_model):
 
 # Function to delete the deployment and service
 def clean_up():
-    # deploy_experiment.clean_up()
     subprocess.run(["kubectl", "scale", "deployment", "yolo-consumer", "-n", "workloadb", "--replicas=0"])
 
 def wait_for_yolo_outputs():
@@ -119,6 +116,7 @@ for model in yolo_models:
     yolo_saver = yolo_to_csv.YoloToCSV(yolo_csv_folder)
 
     # Update yaml and deploy
+    log("")
     yaml_config = {"YOLO_MODEL": model}
     yaml_experiment_path = os.path.join(os.path.dirname(yolo_csv_folder), "consumer.yaml")
     log(f"Creating a new deployment YAML with config {yaml_config} to {yaml_experiment_path}")
@@ -127,7 +125,8 @@ for model in yolo_models:
     log("Application deployed.")
 
     # Check that the applications are ready
-    log("Sending one image that at least one pod can process data.")
+    log("")
+    log("Sending one image to check that at least one pod can process data.")
     images_sent = dummy_feeder.feed_data(1)
     image_ids = set(x for x in range(images_sent))
     log("Waiting for results on the test image.")
@@ -145,8 +144,9 @@ for model in yolo_models:
     time.sleep(idle_before_start)  # Wait for slower consumers to start and to give some slack on the measurement data
 
     # Feed images
+    log("")
     log("Feeding data.")
-    images_sent = dummy_feeder.feed_data(1000)
+    images_sent = dummy_feeder.feed_data(100)
     image_ids = set(x for x in range(images_sent))
 
     # Wait for results
@@ -157,6 +157,7 @@ for model in yolo_models:
     end_time = get_formatted_time()
 
     # Clean up the deployment (preferably start this process before data extractor to parallelize them)
+    log("")
     log(f"Cleaning up...")
     clean_up()
     yolo_saver.save_to_csv()

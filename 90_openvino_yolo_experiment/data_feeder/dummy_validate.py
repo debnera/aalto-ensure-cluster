@@ -55,7 +55,7 @@ def wait_for_results(image_ids, msg_callback=None, timeout_s=10):
         for tp, msgs in messages.items():
             for message in msgs:
                 if len(message.value) == 0:
-                    break
+                    continue
                 try:
                     img_id = message.value['id']
                 except:
