@@ -57,6 +57,7 @@ def run():
     # Track which machine (pod) is doing the processing
     hostname = socket.gethostname()
     ip_addr = socket.gethostbyname(hostname)
+    idle_timer = time.time()
 
     # Consumer thread setup
     thread_lock = create_lock()
@@ -64,11 +65,13 @@ def run():
 
     def process_event(img_bytes, msg_key, time_received, time_sent):
         global errors
+        nonlocal idle_timer
         queue_time = time_received - time_sent  # How long was the message waiting in queue?
         img_id = msg_key.decode('utf-8')
 
         if args['VERBOSE']:
             print(f"Image {img_id} received! Queue_time: {queue_time} ms, size {len(img_bytes)} bytes.")
+        t_idle = time.time() - idle_timer
         t1 = time.time()
         # Preprocess: Fetch image
         img = Image.open(io.BytesIO(img_bytes))
@@ -84,10 +87,12 @@ def run():
 
         # Postprocess: (TODO: Does ultralytics library do postprocessing by itself?)
 
+        idle_timer = time.time()  # Do not count pushing results to idle timer
         # Push results into validation topic if needed
         if args['validate_results']:
             kafka_producer.push_msg(args['kafka_output'], custom_serializer({
                 'timestamps': {
+                    'idle': t_idle,  # Time spent waiting for next image
                     'pre': t_pre,
                     'inf': t_inf,
                     'post': 0.0, # No postprocessing

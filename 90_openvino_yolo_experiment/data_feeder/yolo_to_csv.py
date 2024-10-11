@@ -76,6 +76,7 @@ class YoloToCSV:
         model = yolo_results['model']
         dimensions = yolo_results['dimensions']
         img_id = yolo_results['id']
+        idle = yolo_results['timestamps']['idle']
         pre = yolo_results['timestamps']['pre']
         inf = yolo_results['timestamps']['inf']
         post = yolo_results['timestamps']['post']
@@ -98,6 +99,7 @@ class YoloToCSV:
             'source': source,
             'model': model,
             'dimensions': dimensions,
+            'idle': idle,
             'pre': pre,
             'inf': inf,
             'post': post,
