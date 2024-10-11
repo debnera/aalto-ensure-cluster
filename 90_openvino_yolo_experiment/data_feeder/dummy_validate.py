@@ -5,6 +5,7 @@ from kafka import KafkaConsumer
 from kafka.errors import KafkaTimeoutError
 
 
+
 # Configure the Kafka consumer
 def wait_for_results(image_ids, msg_callback=None, timeout_s=10):
     kafka_servers = 'localhost:10001,localhost:10002,localhost:10003'
@@ -23,6 +24,15 @@ def wait_for_results(image_ids, msg_callback=None, timeout_s=10):
     print(f"Waiting for {len(image_ids)} images")
 
     received_ids = set()
+    def get_num_msg_remaining():
+        """ How many msg are we still expecting to receive? """
+        return len(image_ids) - len(received_ids)
+    def print_sparse(msg):
+        """ Only print some messages to keep the output clean """
+        if get_num_msg_remaining() % 100 == 0 or get_num_msg_remaining() < 10:
+            print(msg)
+
+
     duplicates = 0
     unknowns = 0
     errors = 0
@@ -31,7 +41,7 @@ def wait_for_results(image_ids, msg_callback=None, timeout_s=10):
     while running:
         # Poll for new messages
         if time.time() - prev_msg_received_time > timeout_s:
-            print(f"Timed out! (exceeded {timeout_s} seconds)")
+            print(f"Watchdog timed out! (exceeded {timeout_s} seconds)")
             print(f"Messages received: {received_ids}")
             print(f"Messages missing: {len(image_ids - received_ids)}")
             print(f"Duplicates: {duplicates}, errors: {errors}")
@@ -41,7 +51,7 @@ def wait_for_results(image_ids, msg_callback=None, timeout_s=10):
         try:
             messages = consumer.poll(timeout_ms=timeout_s*1000)
         except KafkaTimeoutError:
-            print(f"Timed out! (exceeded {timeout_s} seconds)")
+            print(f"KafkaTimeoutError! (exceeded {timeout_s} seconds)")
             print(f"Messages received: {received_ids}")
             print(f"Messages missing: {len(image_ids - received_ids)}")
             print(f"Duplicates: {duplicates}, errors: {errors}")
@@ -72,9 +82,9 @@ def wait_for_results(image_ids, msg_callback=None, timeout_s=10):
                     unknowns += 1
                 else:
                     received_ids.add(img_id)
-                    remaining = len(image_ids) - len(received_ids)
-                    print(f"Received message {message.value['id']} with timestamp: {message.value['timestamps']}, ({remaining} remaining)")
-                if len(received_ids) == len(image_ids):
+                    remaining = get_num_msg_remaining()
+                    print_sparse(f"Received message {message.value['id']} with timestamp: {message.value['timestamps']}, ({remaining} remaining)")
+                if get_num_msg_remaining() == 0:
                     print(
                         f"Successfully received all {len(image_ids)} messages! (duplicates: {duplicates}, unknowns: {unknowns})")
                     running = False
