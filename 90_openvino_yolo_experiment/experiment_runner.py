@@ -10,14 +10,17 @@ import datetime
 
 # Define the different YOLO_MODEL values to test
 yolo_models = ["yolov8n", "yolov8s", "yolov8m", "yolov8l", "yolov8x"]
-yolo_models = ["yolov8n", "yolov8s"]#, "yolov8m", "yolov8l", "yolov8x"]
+# yolo_models = ["yolov8n", "yolov8s"]#, "yolov8m", "yolov8l", "yolov8x"]
 # yolo_models = ["yolov8x", "yolov8l"]#, "yolov8m", "yolov8l", "yolov8x"]
-idle_before_start = 0.1*60 # (seconds) Wait for yolo instances to start
-idle_after_end = 0.1*60 # (seconds) Catch the tail of the experiment metrics
+idle_before_start = 0.5*60 # (seconds) Wait for yolo instances to start
+idle_after_end = 0.5*60 # (seconds) Catch the tail of the experiment metrics
+experiment_duration = 300  # seconds
+max_mbps = 1  # 0.5 - 4 mbps are reasonable values depending on the model size
 yaml_template_path = "consumer_template.yaml"  # Template for running the experiments
 yaml_experiment_path = None  # This file will be created from the template
-kafka_servers = 'localhost:10001,localhost:10002,localhost:10003'
-num_yolo_consumers = 1
+# kafka_servers = 'localhost:10001,localhost:10002,localhost:10003'  # Servers for local testing
+kafka_servers = "130.233.193.117:10001"  # Servers for running on our cluster
+num_yolo_consumers = 5
 
 
 def wait_for_amount_replicas(num_replicas):
@@ -168,7 +171,7 @@ for model in yolo_models:
     log("")
     log("Feeding data.")
     # images_sent = dummy_feeder.feed_data(100)
-    images_sent = day_night_feeder.run(2, 200, 30, 3, kafka_servers=kafka_servers)
+    images_sent = day_night_feeder.run(max_mbps=max_mbps, breakpoints=200, duration_seconds=experiment_duration, n_cycles=3, kafka_servers=kafka_servers)
     image_ids = set(x for x in range(images_sent))
     log(f"Completed sending {images_sent} images.\n")
 
