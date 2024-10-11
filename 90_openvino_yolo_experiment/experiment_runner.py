@@ -4,7 +4,7 @@ import subprocess
 import time
 import yaml
 import create_deployment_yaml
-from data_feeder import dummy_feeder, dummy_validate, yolo_to_csv, day_night_feeder
+from data_feeder import dummy_feeder, dummy_validate, yolo_to_csv, day_night_feeder, kafka_init
 from data_extractor import extractor
 import datetime
 
@@ -16,16 +16,8 @@ idle_before_start = 0.1*60 # (seconds) Wait for yolo instances to start
 idle_after_end = 0.1*60 # (seconds) Catch the tail of the experiment metrics
 yaml_template_path = "consumer_template.yaml"  # Template for running the experiments
 yaml_experiment_path = None  # This file will be created from the template
-
-
-# Function to deploy the application
-def deploy_application(yolo_model):
-    subprocess.run(["kubectl", "apply", "-f", yaml_experiment_path])
-
-    replicas = 1
-    subprocess.run(["kubectl", "scale", "deployment", "yolo-consumer", "-n", "workloadb", f"--replicas={replicas}"])
-    wait_for_amount_replicas(replicas)
-
+kafka_servers = 'localhost:10001,localhost:10002,localhost:10003'
+num_yolo_consumers = 1
 
 
 def wait_for_amount_replicas(num_replicas):
@@ -126,11 +118,13 @@ def zip_snapshot(snapshot_path, yolo_csv_folder=None, name="yolov8n"):
     log(f"Zip file size: {zip_size / (1024 * 1024):.2f} MB")
     log(f"Zip file path: {zip_filepath}")
 
+log(f"Make sure the Kafka topics exist")
+kafka_init.init_kafka(kafka_servers=kafka_servers, num_partitions=num_yolo_consumers)
 log(f"Removing any leftover containers from previous experiments...")
 clean_up()
 wait_for_terminate(0)
 log(f"Waiting for any delayed images before the next experiment...")
-leftover_images = dummy_validate.wait_for_results({-1}, msg_callback=None, timeout_s=5)
+leftover_images = dummy_validate.wait_for_results({-1}, kafka_servers=kafka_servers, msg_callback=None, timeout_s=5)
 log(f"Received {leftover_images} delayed images.")
 
 for model in yolo_models:
@@ -142,11 +136,13 @@ for model in yolo_models:
 
     # Update yaml and deploy
     log("")
-    yaml_config = {"YOLO_MODEL": model}
+    yaml_config = {"YOLO_MODEL": model, "KAFKA_SERVERS": kafka_servers}
     yaml_experiment_path = os.path.join(os.path.dirname(yolo_csv_folder), "consumer.yaml")
     log(f"Creating a new deployment YAML with config {yaml_config} to {yaml_experiment_path}")
     create_deployment_yaml.update_yolo_model(yaml_template_path, yaml_experiment_path, yaml_config)
-    deploy_application(model)
+    subprocess.run(["kubectl", "apply", "-f", yaml_experiment_path])
+    subprocess.run(["kubectl", "scale", "deployment", "yolo-consumer", "-n", "workloadb", f"--replicas={num_yolo_consumers}"])
+    wait_for_amount_replicas(num_yolo_consumers)
     log("Application deployed.")
 
     # Check that the applications are ready
@@ -155,7 +151,7 @@ for model in yolo_models:
     images_sent = dummy_feeder.feed_data(5)
     image_ids = set(x for x in range(images_sent))
     log("Waiting for results on the test image.")
-    num_received = dummy_validate.wait_for_results(image_ids, msg_callback=None, timeout_s=600)
+    num_received = dummy_validate.wait_for_results(image_ids, kafka_servers=kafka_servers, msg_callback=None, timeout_s=600)
     if num_received != images_sent:
         log("Test timed out!")
         # TODO: How to handle this situation?
@@ -172,13 +168,13 @@ for model in yolo_models:
     log("")
     log("Feeding data.")
     # images_sent = dummy_feeder.feed_data(100)
-    images_sent = day_night_feeder.run(2, 200, 30, 3, False)
+    images_sent = day_night_feeder.run(2, 200, 30, 3, kafka_servers=kafka_servers)
     image_ids = set(x for x in range(images_sent))
     log(f"Completed sending {images_sent} images.\n")
 
     # Wait for results
     log("Waiting for results.")
-    num_received = dummy_validate.wait_for_results(image_ids, msg_callback=yolo_saver.process_event)
+    num_received = dummy_validate.wait_for_results(image_ids, kafka_servers=kafka_servers, msg_callback=yolo_saver.process_event)
     log(f"Sent {images_sent}, received {num_received} images.")
     log(f"Waiting for {idle_after_end} seconds")
     time.sleep(idle_after_end)
@@ -210,7 +206,7 @@ for model in yolo_models:
     log(f"Zipping done\n")
 
     log(f"Waiting for any delayed images before the next experiment...")
-    leftover_images = dummy_validate.wait_for_results(image_ids, msg_callback=None, timeout_s=10)
+    leftover_images = dummy_validate.wait_for_results(image_ids, kafka_servers=kafka_servers, msg_callback=None, timeout_s=10)
     log(f"Received {leftover_images} delayed images.")
     log(f"Experiment with YOLO_MODEL={model} completed.\n\n")
 

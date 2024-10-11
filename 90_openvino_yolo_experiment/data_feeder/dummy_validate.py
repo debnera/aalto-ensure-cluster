@@ -7,8 +7,8 @@ from kafka.errors import KafkaTimeoutError
 
 
 # Configure the Kafka consumer
-def wait_for_results(image_ids, msg_callback=None, timeout_s=10):
-    kafka_servers = 'localhost:10001,localhost:10002,localhost:10003'
+def wait_for_results(image_ids, kafka_servers, msg_callback=None, timeout_s=10):
+
     consumer = KafkaConsumer(
         'yolo_output',
         bootstrap_servers=kafka_servers,
@@ -60,7 +60,7 @@ def wait_for_results(image_ids, msg_callback=None, timeout_s=10):
 
         if not messages:
             continue
-        prev_msg_received_time = time.time()
+
         for tp, msgs in messages.items():
             for message in msgs:
                 if len(message.value) == 0:
@@ -88,9 +88,11 @@ def wait_for_results(image_ids, msg_callback=None, timeout_s=10):
                     print(
                         f"Successfully received all {len(image_ids)} messages! (duplicates: {duplicates}, unknowns: {unknowns})")
                     running = False
+        prev_msg_received_time = time.time()
 
     consumer.close()
     return len(received_ids)
 
 if __name__ == '__main__':
-    wait_for_results(image_ids=[x for x in range(100)])
+    kafka_servers = 'localhost:10001,localhost:10002,localhost:10003'
+    wait_for_results(image_ids=[x for x in range(100)], kafka_servers=kafka_servers)

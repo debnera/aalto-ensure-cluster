@@ -48,18 +48,10 @@ parser.add_argument(
          "before this compression, and compression will not affect it.",
 )
 
-def run(max_mbps=1, breakpoints=200, duration_seconds=60 * 60 * 2, n_cycles=5, compress_to_jpeg=False, dataset_path="./data_feeder/datasets/mini.hdf5"):
-    """
-    Hackish wrapper, since I do not want to deal with all the different return statements scattered around run
-    """
+def run(max_mbps=1, breakpoints=200, duration_seconds=60 * 60 * 2, n_cycles=5, kafka_servers="130.233.193.117:10001", dataset_path="./data_feeder/datasets/mini.hdf5"):
+
+
     image_count = itertools.count()
-    run2(image_count, max_mbps, breakpoints, duration_seconds, n_cycles, compress_to_jpeg, dataset_path)
-    return next(image_count)
-
-def run2(image_count, max_mbps=1, breakpoints=200, duration_seconds=60 * 60 * 2, n_cycles=5, compress_to_jpeg=False, dataset_path="./data_feeder/datasets/mini.hdf5"):
-
-
-
     # DYNAMIC ARGUMENTS
     args = {
         'dataset': {
@@ -85,7 +77,7 @@ def run2(image_count, max_mbps=1, breakpoints=200, duration_seconds=60 * 60 * 2,
 
     # MAKE SURE THE HDF5 DATASET EXISTS
     if not resource_exists(f'{dataset_path}'):
-        return
+        return next(image_count)
     
     # INSTANTIATE THREAD LOCKS
     thread_lock = create_lock()
@@ -97,12 +89,12 @@ def run2(image_count, max_mbps=1, breakpoints=200, duration_seconds=60 * 60 * 2,
 
     # CREATE KAFKA PRODUCERS FOR EACH THREAD
     for _ in range(args['num_threads']):
-        kafka_producer = create_producer()
+        kafka_producer = create_producer(kafka_servers=kafka_servers)
         kafka_producers.append(kafka_producer)
 
     # MAKE SURE KAFKA CONNECTION IS OK
     if not kafka_producers[0].connected():
-        return
+        return next(image_count)
 
     # LOAD THE DATASET
     dataset = load_dataset(args['dataset'])
@@ -196,14 +188,7 @@ def run2(image_count, max_mbps=1, breakpoints=200, duration_seconds=60 * 60 * 2,
 
             # SELECT NEXT BUFFER ITEM
             image = dataset[next_index]
-            if compress_to_jpeg and type(image) is np.array:
-                # Cuts image size by over 60 %
-                # TODO: This breaks if dataset already has images in bytes, instead of numpy array
-                _, buffer = cv2.imencode('.jpg', image)
-                img_as_bytes = buffer.tobytes()
-            else:
-                # img_as_bytes = image.tobytes()
-                img_as_bytes = image
+            img_as_bytes = image
             image_id = next(image_count)
             image_id_encoded = str(image_id).encode('utf-8')
             kafka_producers[nth_thread - 1].push_msg('yolo_input', img_as_bytes, key=image_id_encoded)
