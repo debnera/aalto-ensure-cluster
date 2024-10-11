@@ -9,12 +9,14 @@ from data_extractor import extractor
 import datetime
 
 # Define the different YOLO_MODEL values to test
-yolo_models = ["yolov8n", "yolov8s", "yolov8m", "yolov8l", "yolov8x"]
-# yolo_models = ["yolov8n", "yolov8s"]#, "yolov8m", "yolov8l", "yolov8x"]
-# yolo_models = ["yolov8x", "yolov8l"]#, "yolov8m", "yolov8l", "yolov8x"]
+yolo_models = []
+yolo_models += ["yolo11n", "yolo11s", "yolo11m", "yolo11l", "yolo11x"] # YOLO v11 released on v8.3.0 (2024-09-29)
+yolo_models += ["yolov10n", "yolov10s", "yolov10m", "yolov10l", "yolov10x"]
+yolo_models += ["yolov9t", "yolov9s", "yolov9m", "yolov9c", "yolov9e"]  # NOTE: Different naming on v9 yolo_models
+yolo_models += ["yolov8n", "yolov8s", "yolov8m", "yolov8l", "yolov8x"]
 idle_before_start = 0.5*60 # (seconds) Wait for yolo instances to start
 idle_after_end = 0.5*60 # (seconds) Catch the tail of the experiment metrics
-experiment_duration = 300  # seconds
+experiment_duration = 600  # seconds
 max_mbps = 1  # 0.5 - 4 mbps are reasonable values depending on the model size
 yaml_template_path = "consumer_template.yaml"  # Template for running the experiments
 yaml_experiment_path = None  # This file will be created from the template
