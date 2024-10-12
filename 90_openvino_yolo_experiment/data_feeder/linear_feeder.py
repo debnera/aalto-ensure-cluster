@@ -114,9 +114,14 @@ def run(max_mbps=1, breakpoints=200, duration_seconds=60 * 60 * 2, n_cycles=5, k
             0.813,  0.656,  0.5,    0.343,  0.186,  0.03
         ] * n_cycles
 
+        #new linear cycle
+        linear_cycle = []
+        for x in range(1, 25):
+            linear_cycle.append(x / 24)
+        print(linear_cycle)
         # SCALE THE ARRAY WHILE MAINTAINING RATIOS
         real_cycle = resize_array(
-            default_cycle,
+            linear_cycle,
             args['experiment']['n_breakpoints']
         )
 
