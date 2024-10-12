@@ -149,6 +149,10 @@ for model in yolo_models:
     subprocess.run(["kubectl", "scale", "deployment", "yolo-consumer", "-n", "workloadb", f"--replicas={num_yolo_consumers}"])
     wait_for_amount_replicas(num_yolo_consumers)
     log("Application deployed.")
+    log(f"Waiting for 120 seconds so applications have a chance to set up completely")
+    # Maybe related Kafka issue: https://github.com/akka/alpakka-kafka/issues/382
+    # Our problem also seems to happen like: A) consumer pulls message B) other consumer connects C) Kafka reassigns -> message lost
+    time.sleep(120)  # Wait for initialization (120 might be too much and there could be other solutions)
 
     # Check that the applications are ready
     log("")
