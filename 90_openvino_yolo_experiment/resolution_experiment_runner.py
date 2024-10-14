@@ -175,7 +175,7 @@ for resolution in resolutions:
         # Check that the applications are ready
         log("")
         log("Sending some images to check that at least one pod can process data.")
-        images_sent = dummy_feeder.feed_data(5)
+        images_sent = dummy_feeder.feed_data(5, kafka_servers=kafka_servers)
         image_ids = set(x for x in range(images_sent))
         log("Waiting for results on the test image.")
         num_received = dummy_validate.wait_for_results(image_ids, kafka_servers=kafka_servers, msg_callback=None, timeout_s=600)
@@ -194,8 +194,7 @@ for resolution in resolutions:
         # Feed images
         log("")
         log("Feeding data.")
-        # images_sent = dummy_feeder.feed_data(100)
-        images_sent = day_night_feeder.run(max_mbps=max_mbps, breakpoints=200, duration_seconds=experiment_duration, n_cycles=3, kafka_servers=kafka_servers)
+        images_sent = feeder.run(max_mbps=max_mbps, breakpoints=200, duration_seconds=experiment_duration, n_cycles=3, kafka_servers=kafka_servers)
         image_ids = set(x for x in range(images_sent))
         log(f"Completed sending {images_sent} images.\n")
 

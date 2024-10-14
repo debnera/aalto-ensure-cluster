@@ -6,9 +6,8 @@ import cv2
 import itertools
 import time
 
-def feed_data(n_images=100):
+def feed_data(n_images=100, kafka_servers='localhost:10001,localhost:10002,localhost:10003'):
     # Configure the Kafka producer
-    kafka_servers = 'localhost:10001,localhost:10002,localhost:10003'
     producer = KafkaProducer(bootstrap_servers=kafka_servers)
 
     # Send the image to Kafka
