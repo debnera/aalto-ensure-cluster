@@ -79,6 +79,9 @@ def run():
         img = Image.open(io.BytesIO(img_bytes))
         image_array = asarray(img)
         image_array = image_array.reshape((1, 3, 640, 640))
+        resolution = int(args['resolution'])
+        if resolution != 640:
+            image_array = image_array.resize((1, 3, int(args['resolution']), int(args['resolution'])))
         t_pre = (time.time() - t1) * 1000
         t2 = time.time()
         # Inference
