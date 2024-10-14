@@ -81,7 +81,7 @@ def init_kafka(kafka_servers, num_partitions=5):
         thread_lock = create_lock()
 
         def cons(lock):
-            kafka_client = create_consumer(topic_name)
+            kafka_client = create_consumer(topic_name, kafka_servers=kafka_servers)
 
             while lock.is_active():
                 kafka_client.poll_next(1, lock, lambda *_: lock.kill())
@@ -94,7 +94,7 @@ def init_kafka(kafka_servers, num_partitions=5):
         for i in range(max_attempts):
             print(f"Trying to send msg to {topic_name}")
 
-            kafka_client = create_producer()
+            kafka_client = create_producer(kafka_servers=kafka_servers)
             kafka_client.push_msg(topic_name, json.dumps({"test": "testing"}).encode('UTF-8'))
             time.sleep(2)
             if not thread_lock.is_active():
