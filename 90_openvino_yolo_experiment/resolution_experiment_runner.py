@@ -140,10 +140,10 @@ def zip_snapshot(snapshot_path, yolo_csv_folder=None, name="yolov8n"):
     log(f"Zip file size: {zip_size / (1024 * 1024):.2f} MB")
     log(f"Zip file path: {zip_filepath}")
 
-log(f"Make sure the Kafka topics exist")
-kafka_init.init_kafka(kafka_servers=kafka_servers, num_partitions=num_yolo_consumers)
 log(f"Removing any leftover containers from previous experiments...")
 clean_up()
+log(f"Make sure the Kafka topics exist")
+kafka_init.init_kafka(kafka_servers=kafka_servers, num_partitions=num_yolo_consumers)
 wait_for_terminate(0)
 log(f"Waiting for any delayed images before the next experiment...")
 leftover_images = dummy_validate.wait_for_results({-1}, kafka_servers=kafka_servers, msg_callback=None, timeout_s=5)
