@@ -159,7 +159,7 @@ for resolution in resolutions:
 
         # Update yaml and deploy
         log("")
-        yaml_config = {"YOLO_MODEL": model, "KAFKA_SERVERS": kafka_servers, "RESOLUTION": resolution}
+        yaml_config = {"YOLO_MODEL": model, "KAFKA_SERVERS": kafka_servers, "RESOLUTION": str(resolution)}
         yaml_experiment_path = os.path.join(os.path.dirname(yolo_csv_folder), "consumer.yaml")
         log(f"Creating a new deployment YAML with config {yaml_config} to {yaml_experiment_path}")
         create_deployment_yaml.update_yolo_model(yaml_template_path, yaml_experiment_path, yaml_config)
