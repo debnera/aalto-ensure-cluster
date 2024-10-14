@@ -23,7 +23,9 @@ def run():
         'kafka_input': os.environ.get('KAFKA_INPUT_TOPIC', 'yolo_input'),
         'kafka_output': os.environ.get('KAFKA_OUTPUT_TOPIC', 'yolo_output'),
         'kafka_servers': os.environ.get('KAFKA_SERVERS', 'localhost:10001,localhost:10002,localhost:10003'),
-        'VERBOSE': os.environ.get('VERBOSE', 'FALSE') == 'TRUE'
+        'VERBOSE': os.environ.get('VERBOSE', 'FALSE') == 'TRUE',
+        'resolution': os.environ.get('RESOLUTION', '640'),
+
     }
     print(args)
 
@@ -43,8 +45,8 @@ def run():
         # Fetch Yolo model from cloud
         yolo_ultralytics = YOLO(f"{model}.pt")
         # Export yolo to two different openvino formats (which one do we actually want?)
-        yolo_ultralytics.export(format="openvino")
-        yolo_ultralytics.export(format="onnx")
+        yolo_ultralytics.export(format="openvino", imgsz=int(args['resolution']))
+        yolo_ultralytics.export(format="onnx", imgsz=int(args['resolution']))
 
     # Set up openvino
     core = ov.Core()
