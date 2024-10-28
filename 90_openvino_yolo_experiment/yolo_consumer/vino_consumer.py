@@ -1,5 +1,7 @@
 import time
 
+import numpy as np
+
 from utilz.kafka_utils import create_consumer, create_producer
 from utilz.misc import custom_serializer, resource_exists, log, create_lock
 from PIL import Image
@@ -81,6 +83,7 @@ def run():
         image_array = image_array.reshape((1, 3, 640, 640))
         resolution = int(args['resolution'])
         if resolution != 640:
+            image_array = image_array.copy()  # Fix ownership of the image by copying
             image_array = image_array.resize((1, 3, int(args['resolution']), int(args['resolution'])))
         t_pre = (time.time() - t1) * 1000
         t2 = time.time()

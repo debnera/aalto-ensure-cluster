@@ -38,6 +38,8 @@ spec:
               value: "130.233.96.30:10001"
             - name: RESOLUTION
               value: "640"
+            - name: VERBOSE
+              value: "TRUE"
           #resources:
           #  limits:
           #    cpu: 1000m
