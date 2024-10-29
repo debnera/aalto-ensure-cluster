@@ -186,9 +186,10 @@ log(f"Received {leftover_images} delayed images.")
 
 for resolution in resolutions:
     for model in yolo_models:
-        log(f"Starting experiment with YOLO_MODEL={model}")
+        run_name = f"{model}_{resolution}"
+        log(f"Starting experiment with YOLO_MODEL={run_name}")
         log("Starting to log yolo results to ")
-        yolo_csv_folder = f"yolo_outputs/{time.time()}_{model}/"
+        yolo_csv_folder = f"yolo_outputs/{time.time()}_{run_name}/"
         yolo_saver = yolo_to_csv.YoloToCSV(yolo_csv_folder)
         # Update yaml and deploy
         log("")
@@ -262,11 +263,11 @@ for resolution in resolutions:
         # Zip all experiment data and delete unzipped data
         log("Zipping all experiment data...")
         snapshot_path = snapshot_results["path"]
-        zip_snapshot(snapshot_path, yolo_csv_folder, name=f"{model}_{resolution}")
+        zip_snapshot(snapshot_path, yolo_csv_folder, name=f"{run_name}")
         log(f"Zipping done\n")
         log(f"Waiting for any delayed images before the next experiment...")
         leftover_images = dummy_validate.wait_for_results(image_ids, kafka_servers=kafka_servers, msg_callback=None,
                                                           timeout_s=10)
         log(f"Received {leftover_images} delayed images.")
-        log(f"Experiment with YOLO_MODEL={model} completed.\n\n")
+        log(f"Experiment with YOLO_MODEL={run_name} completed.\n\n")
 log("All experiments completed.")
