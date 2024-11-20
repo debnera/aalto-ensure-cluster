@@ -126,7 +126,8 @@ def run(num_images=100, num_threads=4, kafka_servers="130.233.193.117:10001", da
         [[thread.join() for thread in threads]]
         end_time = time.time()
         duration = end_time - experiment_start
-        mbps = (avg_dataset_item_size * num_images) / duration
+        bps = (avg_dataset_item_size * num_images) / duration
+        mbps = bps / 1000000  # Bytes or bits...? Assuming bytes, since each image is in byte-format
         log(f'EXPERIMENT DONE')
         log(f'SENT {num_images} IMAGES IN {duration} SECONDS ({mbps} MB/s)')
 
