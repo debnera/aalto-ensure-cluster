@@ -106,7 +106,8 @@ def run(num_images=100, num_threads=4, kafka_servers="130.233.193.117:10001", da
             # INCREMENT ROLLING INDEX
             next_index = (next_index+1) % dataset_length
 
-        log(f'THREAD {nth_thread} HAS FINISHED AT {time.time()}')
+        ended = time.time()
+        log(f'THREAD {nth_thread} HAS FINISHED AT {ended} -- (took {ended - experiment_start}) s')
 
     ########################################################################################
     ########################################################################################

@@ -37,7 +37,9 @@ resolutions = [160, 320, 640, 1280]
 idle_before_start_1 = 120 # (seconds) Wait for yolo instances to receive their kafka assignments - otherwise might get stuck
 idle_before_start_2 = 0.5 * 60  # (seconds) Additional wait after Kafka is verified working
 idle_after_end = 0.5 * 60  # (seconds) Catch the tail of the experiment metrics
-num_images = 1000  # seconds
+num_images_for_small_models = 5000  # (1000 img -> 2s to send --- 5000 img -> 10s to send)
+num_images_for_large_models = 1000
+large_models_end_with = ["m", "l", "x", "c", "e"]
 yaml_template_path = "consumer_template.yaml"  # Template for running the experiments
 yaml_experiment_path = None  # This file will be created from the template
 # kafka_servers = 'localhost:10001,localhost:10002,localhost:10003'  # Servers for local testing
@@ -237,6 +239,15 @@ for resolution in resolutions:
             idle_before_start_2)  # Wait for slower consumers to start and to give some slack on the measurement data
         # Feed images
         log("")
+        is_large_model = False
+        for letter in large_models_end_with:
+            if model.endswith(letter):
+                is_large_model = True
+        print(f"Model {model} is_large_model={is_large_model}")
+        if is_large_model:
+            num_images = num_images_for_large_models
+        else:
+            num_images = num_images_for_small_models
         log(f"Feeding data (target: {num_images} images).")
         images_sent = feeder.run(num_images,
                                  kafka_servers=kafka_servers)
