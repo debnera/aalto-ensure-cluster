@@ -19,11 +19,13 @@ VERBOSE = True
 class create_producer:
 
     # ON LOAD, CREATE KAFKA PRODUCER
-    def __init__(self, kafka_servers=KAFKA_SERVERS):
+    def __init__(self, kafka_servers=KAFKA_SERVERS, verbosity_interval=100):
         self.kafka_servers = kafka_servers
         self.kafka_client = Producer({
             'bootstrap.servers': kafka_servers,
         })
+        self.verbosity_interval = verbosity_interval
+        self.ack_counter = 0
 
     # MAKE SURE KAFKA CONNECTION IS OK
     def connected(self):
@@ -40,7 +42,9 @@ class create_producer:
         if error:
             print('ACK ERROR', error)
         else:
-            if VERBOSE: log(f'MESSAGE PUSHED')
+            if VERBOSE and self.ack_counter % self.verbosity_interval == 0:
+                log(f'MESSAGE PUSHED (total from this thread: {self.ack_counter+1})')
+        self.ack_counter += 1
 
     # PUSH MESSAGE TO A KAFK TOPIC
     def push_msg(self, topic_name, bytes_data, key=None):
