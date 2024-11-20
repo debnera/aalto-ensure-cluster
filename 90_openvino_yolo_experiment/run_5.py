@@ -243,7 +243,7 @@ for resolution in resolutions:
         for letter in large_models_end_with:
             if model.endswith(letter):
                 is_large_model = True
-        print(f"Model {model} is_large_model={is_large_model}")
+        log(f"Model {model} is_large_model={is_large_model}")
         if is_large_model:
             num_images = num_images_for_large_models
         else:
