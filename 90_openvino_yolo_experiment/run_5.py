@@ -37,8 +37,10 @@ resolutions = [160, 320, 640, 1280]
 idle_before_start_1 = 120 # (seconds) Wait for yolo instances to receive their kafka assignments - otherwise might get stuck
 idle_before_start_2 = 0.5 * 60  # (seconds) Additional wait after Kafka is verified working
 idle_after_end = 0.5 * 60  # (seconds) Catch the tail of the experiment metrics
-num_images_for_small_models = 10000  # (1000 img -> 2s to send --- 5000 img -> 10s to send)
+num_images_for_small_models = 30000  # (1000 img -> 2s to send --- 5000 img -> 10s to send)
+num_images_for_medium_models = 10000  # (1000 img -> 2s to send --- 5000 img -> 10s to send)
 num_images_for_large_models = 1000
+large_resolutions = [1280]
 large_models_end_with = ["m", "l", "x", "c", "e"]
 yaml_template_path = "consumer_template.yaml"  # Template for running the experiments
 yaml_experiment_path = None  # This file will be created from the template
@@ -239,13 +241,19 @@ for resolution in resolutions:
             idle_before_start_2)  # Wait for slower consumers to start and to give some slack on the measurement data
         # Feed images
         log("")
+        is_large_resolution = False
+        for res in large_resolutions:
+            if resolution == res:
+                is_large_resolution = True
         is_large_model = False
         for letter in large_models_end_with:
             if model.endswith(letter):
                 is_large_model = True
-        log(f"Model {model} is_large_model={is_large_model}")
-        if is_large_model:
+        log(f"Model {model} is_large_model={is_large_model}, is_large_resolution={is_large_model}")
+        if is_large_model and is_large_resolution:
             num_images = num_images_for_large_models
+        elif is_large_model or is_large_resolution:
+            num_images = num_images_for_medium_models
         else:
             num_images = num_images_for_small_models
         log(f"Feeding data (target: {num_images} images).")
