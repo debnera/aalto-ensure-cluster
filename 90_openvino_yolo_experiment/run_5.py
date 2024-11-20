@@ -37,7 +37,7 @@ resolutions = [160, 320, 640, 1280]
 idle_before_start_1 = 120 # (seconds) Wait for yolo instances to receive their kafka assignments - otherwise might get stuck
 idle_before_start_2 = 0.5 * 60  # (seconds) Additional wait after Kafka is verified working
 idle_after_end = 0.5 * 60  # (seconds) Catch the tail of the experiment metrics
-num_images_for_small_models = 5000  # (1000 img -> 2s to send --- 5000 img -> 10s to send)
+num_images_for_small_models = 10000  # (1000 img -> 2s to send --- 5000 img -> 10s to send)
 num_images_for_large_models = 1000
 large_models_end_with = ["m", "l", "x", "c", "e"]
 yaml_template_path = "consumer_template.yaml"  # Template for running the experiments
@@ -186,9 +186,9 @@ def zip_snapshot(snapshot_path, yolo_csv_folder=None, name="yolov8n"):
 
 log(f"Removing any leftover containers from previous experiments...")
 clean_up()
+wait_for_terminate(0)
 log(f"Make sure the Kafka topics exist")
 kafka_init.init_kafka(kafka_servers=kafka_servers, num_partitions=num_yolo_consumers)
-wait_for_terminate(0)
 log(f"Waiting for any delayed images before the next experiment...")
 leftover_images = dummy_validate.wait_for_results({-1}, kafka_servers=kafka_servers, msg_callback=None, timeout_s=5)
 log(f"Received {leftover_images} delayed images.")
