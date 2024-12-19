@@ -16,21 +16,16 @@ import time
 import yaml
 import create_deployment_yaml
 from warehouse import burst_feeder
+from warehouse import kafka_init
+from data_extractor import extractor
 import datetime
 import argparse  # New import for argument parsing
 
 # Argument parser for command-line arguments
-parser = argparse.ArgumentParser(description="Run YOLO experiments with optional smoketest.")
+parser = argparse.ArgumentParser(description="Run warehouse experiments with optional smoketest.")
 parser.add_argument("--smoketest", action="store_true", help="Run a short smoketest.")
 
 args = parser.parse_args()  # Parse arguments
-
-
-def img_per_second_to_mbps(images_per_second):
-    # 1 mbps = 20 images
-    scale = 0.5  # Some scaling factor to affect the max throughput of the experiment
-    return scale * images_per_second / 20
-
 
 
 feeder = burst_feeder
@@ -39,13 +34,22 @@ idle_before_start_1 = 120 # (seconds) Wait for yolo instances to receive their k
 idle_before_start_2 = 0.5 * 60  # (seconds) Additional wait after Kafka is verified working
 idle_after_end = 0.5 * 60  # (seconds) Catch the tail of the experiment metrics
 total_runtime_hours = 24
-hours_per_model = total_runtime_hours / (len(resolutions) * len(yolo_models))
+runs = [1, 2, 3, 4]  # TODO: what are the different runs? -> num_workers, dataset
+hours_per_model = total_runtime_hours / len(runs)
 seconds_per_model = hours_per_model * 3600
-yaml_template_path = "consumer_template.yaml"  # Template for running the experiments
-yaml_experiment_path = None  # This file will be created from the template
+deploy_worker_template_path = "kubernetes_templates/worker_template.yaml"  # Template for running the experiments
+deploy_worker_experiment_path = None  # This file will be created from the template
+deploy_master_template_path = "kubernetes_templates/master_template.yaml"  # Template for running the experiments
+deploy_master_experiment_path = None  # This file will be created from the template
 # kafka_servers = 'localhost:10001,localhost:10002,localhost:10003'  # Servers for local testing
 kafka_servers = "130.233.193.117:10001"  # Servers for running on our cluster
-num_yolo_consumers = 5
+num_workers = 4
+namespace = "workloadc"
+worker_name = "lidar-worker"
+master_name = "lidar-master"
+kube_application_names = [worker_name, master_name]
+# Specify kafka topics and the number of partitions
+topics = {"grid_worker_input": 1, "grid_master_input": 1, "grid_worker_validate": 1, "grid_master_validate": 1}
 
 logging.basicConfig(
     filename=f'{time.time()}_experiment.log',
@@ -72,18 +76,19 @@ if args.smoketest:
         log(f"Error fetching local IP: {e} -> using localhost instead")
         kafka_servers = "localhost:10001"
 
-
-    resolutions = [160]  # Only one resolution for smoketest
-    yolo_models = ["yolo11n"]  # Only one model for smoketest
     experiment_duration = 60  # Short experiment duration
     idle_before_start_2 = 10  # Shorter wait times
     idle_after_end = 10
 
 
-def wait_for_amount_replicas(num_replicas):
+def scale_and_wait_for_replicas(num_replicas, application_name):
+    # Start scaling the application
+    subprocess.run(
+        ["kubectl", "scale", "deployment", f"{application_name}", "-n", f"{namespace}", f"--replicas={num_replicas}"])
+    # Wait for the application to scale
     while True:
         result = subprocess.run(
-            ["kubectl", "get", "pods", "-n", "workloadb", "-l", "run=yolo-consumer", "-o", "yaml"],
+            ["kubectl", "get", "pods", "-n", f"{namespace}", "-l", f"run={application_name}", "-o", "yaml"],
             capture_output=True,
             text=True
         )
@@ -91,14 +96,14 @@ def wait_for_amount_replicas(num_replicas):
         running_pods = [pod for pod in pods["items"] if pod["status"]["phase"] == "Running"]
         if len(running_pods) == num_replicas:
             break
-        log(f"Waiting for {len(running_pods)}/{num_replicas} yolo-consumer pods to be running...")
+        log(f"Waiting for {len(running_pods)}/{num_replicas} {application_name} pods to be running...")
         time.sleep(5)  # Wait for 10 seconds before checking again
 
 
-def wait_for_terminate(num_replicas):
+def wait_for_terminate(num_replicas, application_name):
     while True:
         result = subprocess.run(
-            ["kubectl", "get", "pods", "-n", "workloadb", "-l", "run=yolo-consumer", "-o", "yaml"],
+            ["kubectl", "get", "pods", "-n", f"{namespace}", "-l", f"run={application_name}", "-o", "yaml"],
             capture_output=True,
             text=True
         )
@@ -107,27 +112,14 @@ def wait_for_terminate(num_replicas):
                         pod["status"]["phase"] == "Running" or pod["status"]["phase"] == "Terminating"]
         if len(running_pods) == num_replicas:
             break
-        log(f"Waiting for {len(running_pods)}/{num_replicas} yolo-consumer pods to completely stop...")
+        log(f"Waiting for {len(running_pods)}/{num_replicas} application ({application_name}) pods to completely stop...")
         time.sleep(5)  # Wait for 10 seconds before checking again
 
 
 # Function to delete the deployment and service
 def clean_up():
-    subprocess.run(["kubectl", "scale", "deployment", "yolo-consumer", "-n", "workloadb", "--replicas=0"])
-
-
-def wait_for_yolo_outputs():
-    pass
-
-
-def collect_data():
-    pass
-
-
-
-
-
-
+    for app in kube_application_names:
+        subprocess.run(["kubectl", "scale", "deployment", f"{app}", "-n", f"{namespace}", "--replicas=0"])
 
 
 def get_formatted_time():
@@ -138,6 +130,8 @@ def get_formatted_time():
 
 
 def zip_snapshot(snapshot_path, yolo_csv_folder=None, name="yolov8n"):
+    pass
+    """
     import os
     import zipfile
     import shutil
@@ -147,7 +141,7 @@ def zip_snapshot(snapshot_path, yolo_csv_folder=None, name="yolov8n"):
         # Copy contents from yolo_csv_folder to snapshot_path
         destination_yolo_folder = os.path.join(snapshot_path, "yolo_outputs")
         shutil.copytree(yolo_csv_folder, destination_yolo_folder)
-        log(f"Copied YOLO CSV files from {yolo_csv_folder} to {destination_yolo_folder}")
+        log(f"Copied warehouse CSV files from {yolo_csv_folder} to {destination_yolo_folder}")
     # Copying the current script and its configurations to the snapshot
     current_script_path = __file__  # Path to the current script
     script_destination = os.path.join(snapshot_path, os.path.basename(current_script_path))
@@ -183,104 +177,133 @@ def zip_snapshot(snapshot_path, yolo_csv_folder=None, name="yolov8n"):
     log(f"Zipping completed in {zip_duration:.2f} seconds")
     log(f"Zip file size: {zip_size / (1024 * 1024):.2f} MB")
     log(f"Zip file path: {zip_filepath}")
+    """
 
 
 log(f"Removing any leftover containers from previous experiments...")
 clean_up()
-wait_for_terminate(0)
+wait_for_terminate(0, master_name)
+wait_for_terminate(0, worker_name)
 log(f"Make sure the Kafka topics exist")
-kafka_init.init_kafka(kafka_servers=kafka_servers, num_partitions=num_yolo_consumers)
-log(f"Waiting for any delayed images before the next experiment...")
-leftover_images = dummy_validate.wait_for_results({-1}, kafka_servers=kafka_servers, msg_callback=None, timeout_s=5)
-log(f"Received {leftover_images} delayed images.")
+for topic, num_partitions in topics.items():
+    # Make sure the topic is initialized with correct amount of partitions
+    kafka_init.init_kafka(kafka_servers=kafka_servers, num_partitions=num_partitions, topic_name=topic)
+    # Make sure the topic contains no messages from previous experiments
+    kafka_init.clear_topic(kafka_servers=kafka_servers, topic_name=topic)
 
-for resolution in resolutions:
-    for model in yolo_models:
-        run_name = f"{model}_{resolution}"
-        log(f"Starting experiment with YOLO_MODEL={run_name}")
-        log("Starting to log yolo results to ")
-        yolo_csv_folder = f"yolo_outputs/{time.time()}_{run_name}/"
-        yolo_saver = yolo_to_csv.YoloToCSV(yolo_csv_folder)
-        # Update yaml and deploy
-        log("")
-        yaml_config = {"YOLO_MODEL": model,
-                       "KAFKA_SERVERS": kafka_servers,
-                       "RESOLUTION": str(resolution),
-                       "VERBOSE": "FALSE"}
-        yaml_experiment_path = os.path.join(os.path.dirname(yolo_csv_folder), "consumer.yaml")
-        log(f"Creating a new deployment YAML with config {yaml_config} to {yaml_experiment_path}")
-        create_deployment_yaml.update_yolo_model(yaml_template_path, yaml_experiment_path, yaml_config)
-        subprocess.run(["kubectl", "apply", "-f", yaml_experiment_path])
-        subprocess.run(
-            ["kubectl", "scale", "deployment", "yolo-consumer", "-n", "workloadb", f"--replicas={num_yolo_consumers}"])
-        wait_for_amount_replicas(num_yolo_consumers)
-        log("Application deployed.")
-        log(f"Waiting for {idle_before_start_1} seconds so applications have a chance to set up completely")
-        # Maybe related Kafka issue: https://github.com/akka/alpakka-kafka/issues/382
-        # Our problem also seems to happen like: A) consumer pulls message B) other consumer connects C) Kafka reassigns -> message lost
-        time.sleep(idle_before_start_1)  # Wait for initialization (How to know how long to wait?)
-        # Check that the applications are ready
-        log("")
-        log("Sending some images to check that at least one pod can process data.")
-        images_sent = dummy_feeder.feed_data(5, kafka_servers=kafka_servers)
-        image_ids = set(x for x in range(images_sent))
-        log("Waiting for results on the test image.")
-        num_received = dummy_validate.wait_for_results(image_ids, kafka_servers=kafka_servers, msg_callback=None,
-                                                       timeout_s=600)
-        if num_received != images_sent:
-            log("Test timed out!")
-            # TODO: How to handle this situation?
-        else:
-            log("Test successful.")
-        # Start measuring the cluster from this point forwards
-        start_time = get_formatted_time()
-        log(start_time)
-        log(f"Waiting for {idle_before_start_2} seconds")
-        time.sleep(
-            idle_before_start_2)  # Wait for slower consumers to start and to give some slack on the measurement data
-        # Feed images
-        log("")
-        target_throughput = max_throughput_img_per_second[model][resolution]
-        max_mbps = img_per_second_to_mbps(target_throughput)
-        log(f"Feeding data (target: {target_throughput} images -- {max_mbps:.2f} mbps).")
+for run in runs:
+    run_name = f"{run}"
+    log(f"Starting experiment with warehouse_MODEL={run_name}")
+    log("Starting to log yolo results to ")
+    lidar_csv_folder = f"yolo_outputs/{time.time()}_{run_name}/"
+    # TODO: Add script for saving lidar QoS metrics
+    # Update yaml and deploy
+    log("")
+    yaml_config = {"KAFKA_SERVERS": kafka_servers,
+                   "VERBOSE": "FALSE",
+                   "VISUALIZE": "VISUALIZE"}
+    deploy_worker_experiment_path = os.path.join(os.path.dirname(lidar_csv_folder), "worker.yaml")
+    deploy_master_experiment_path = os.path.join(os.path.dirname(lidar_csv_folder), "master.yaml")
 
-        images_sent = feeder.run(max_mbps=max_mbps, breakpoints=200, duration_seconds=seconds_per_model, n_cycles=5,
-                                 kafka_servers=kafka_servers)
-        image_ids = set(x for x in range(images_sent))
-        log(f"Completed sending {images_sent} images.\n")
-        # Wait for results
-        log("Waiting for results.")
-        num_received = dummy_validate.wait_for_results(image_ids, kafka_servers=kafka_servers,
-                                                       msg_callback=yolo_saver.process_event)
-        log(f"Sent {images_sent}, received {num_received} images.")
-        log(f"Waiting for {idle_after_end} seconds")
-        time.sleep(idle_after_end)
-        end_time = get_formatted_time()
-        # Clean up the deployment (preferably start this process before data extractor to parallelize them)
-        log("")
-        log(f"Cleaning up...")
-        clean_up()
-        yolo_saver.save_to_csv()
+    # Workers
+    log(f"Creating a new deployment YAML with config {yaml_config} to {deploy_worker_experiment_path}")
+    create_deployment_yaml.update_warehouse_model(deploy_worker_template_path, deploy_worker_experiment_path, yaml_config)
+    subprocess.run(["kubectl", "apply", "-f", deploy_worker_experiment_path])
+    scale_and_wait_for_replicas(application_name=worker_name, num_replicas=num_workers)
 
-        log(end_time)
-        log(f"Extracting data...")
-        snapshot_results = extractor.create_snapshot(
-            start_time=start_time,
-            end_time=end_time,
-            sampling=5,  # Sampling rate used by prometheus during the experiment (seconds)
-            segment_size=1000,
-            n_threads=4,  # Cluster nodes have 4 cores?
-        )
-        log("Data extracted.")
-        log(snapshot_results)
-        # Zip all experiment data and delete unzipped data
-        log("Zipping all experiment data...")
-        snapshot_path = snapshot_results["path"]
-        zip_snapshot(snapshot_path, yolo_csv_folder, name=f"{run_name}")
-        log(f"Zipping done\n")
-        log(f"Waiting for any delayed images before the next experiment...")
-        leftover_images = dummy_validate.wait_for_results(image_ids, kafka_servers=kafka_servers, msg_callback=None,
-                                                          timeout_s=10)
-        log(f"Received {leftover_images} delayed images.")
-        log(f"Experiment with YOLO_MODEL={run_name} completed.\n\n")
+    # Master
+    log(f"Creating a new deployment YAML with config {yaml_config} to {deploy_master_experiment_path}")
+    create_deployment_yaml.update_warehouse_model(deploy_master_template_path, deploy_master_experiment_path, yaml_config)
+    subprocess.run(["kubectl", "apply", "-f", deploy_master_experiment_path])
+    scale_and_wait_for_replicas(application_name=master_name, num_replicas=1)
+
+    log("Application deployed.")
+    log(f"Waiting for {idle_before_start_1} seconds so applications have a chance to set up completely")
+    # Maybe related Kafka issue: https://github.com/akka/alpakka-kafka/issues/382
+    # Our problem also seems to happen like: A) consumer pulls message B) other consumer connects C) Kafka reassigns -> message lost
+    time.sleep(idle_before_start_1)  # Wait for initialization (How to know how long to wait?)
+    # Check that the applications are ready
+    log("")
+    log("Sending some data to check that at least one pod can process data.")
+    """
+    TODO: Add validation for lidar
+    
+    images_sent = dummy_feeder.feed_data(5, kafka_servers=kafka_servers)
+    image_ids = set(x for x in range(images_sent))
+    log("Waiting for results on the test image.")
+    num_received = dummy_validate.wait_for_results(image_ids, kafka_servers=kafka_servers, msg_callback=None,
+                                                   timeout_s=600)
+    if num_received != images_sent:
+        log("Test timed out!")
+        # TODO: How to handle this situation?
+    else:
+        log("Test successful.")
+    """
+
+    # Start measuring the cluster from this point forwards
+    start_time = get_formatted_time()
+    log(start_time)
+    log(f"Waiting for {idle_before_start_2} seconds")
+    time.sleep(
+        idle_before_start_2)  # Wait for slower consumers to start and to give some slack on the measurement data
+    # Feed images
+    log("")
+    log(f"Feeding data (num_images: {None} images -- num_workers: {None}).")
+
+    dataset_path = None
+    images_sent = feeder.run(dataset_path=dataset_path,
+                             num_items=1000,
+                             num_threads=4,
+                             kafka_servers=kafka_servers)
+    image_ids = set(x for x in range(images_sent))
+    log(f"Completed sending {images_sent} images.\n")
+    # Wait for results
+    log("Waiting for results.")
+    """
+    # TODO: Wait for results
+    num_received = dummy_validate.wait_for_results(image_ids, kafka_servers=kafka_servers,
+                                                   msg_callback=yolo_saver.process_event)
+    log(f"Sent {images_sent}, received {num_received} images.")
+    """
+    log(f"Waiting for {idle_after_end} seconds")
+    time.sleep(idle_after_end)
+    end_time = get_formatted_time()
+    # Clean up the deployment (preferably start this process before data extractor to parallelize them)
+    log("")
+    log(f"Cleaning up...")
+    clean_up()
+    """
+    TODO: Save qos metrics
+    yolo_saver.save_to_csv()
+    """
+
+    log(end_time)
+    log(f"Extracting data...")
+    snapshot_results = extractor.create_snapshot(
+        start_time=start_time,
+        end_time=end_time,
+        sampling=5,  # Sampling rate used by prometheus during the experiment (seconds)
+        segment_size=1000,
+        n_threads=4,  # Cluster nodes have 4 cores?
+    )
+    log("Data extracted.")
+    log(snapshot_results)
+    # Zip all experiment data and delete unzipped data
+    log("Zipping all experiment data...")
+    snapshot_path = snapshot_results["path"]
+    """
+    TODO: Implement zipping
+    zip_snapshot(snapshot_path, yolo_csv_folder, name=f"{run_name}")
+    """
+
+    log(f"Zipping done\n")
+    """
+    TODO: Wait for delayed results (or just empty the msg queues?)
+    log(f"Waiting for any delayed images before the next experiment...")
+    leftover_images = dummy_validate.wait_for_results(image_ids, kafka_servers=kafka_servers, msg_callback=None,
+                                                      timeout_s=10)
+    log(f"Received {leftover_images} delayed images.")
+    """
+
+    log(f"Experiment with warehouse_MODEL={run_name} completed.\n\n")
 log("All experiments completed.")
