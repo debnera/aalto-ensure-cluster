@@ -30,13 +30,14 @@ args = parser.parse_args()  # Parse arguments
 
 feeder = burst_feeder
 # feeder = burst_feeder  # Use linear_feeder or day_night_feeder
-idle_before_start_1 = 120 # (seconds) Wait for yolo instances to receive their kafka assignments - otherwise might get stuck
+idle_before_start_1 = 120 # (seconds) Wait for application instances to receive their kafka assignments - otherwise might get stuck
 idle_before_start_2 = 0.5 * 60  # (seconds) Additional wait after Kafka is verified working
 idle_after_end = 0.5 * 60  # (seconds) Catch the tail of the experiment metrics
 total_runtime_hours = 24
-runs = [1, 2, 3, 4]  # TODO: what are the different runs? -> num_workers, dataset
-hours_per_model = total_runtime_hours / len(runs)
-seconds_per_model = hours_per_model * 3600
+num_workers = [1, 2, 3, 4, 5, 6]  # Number of lidar workers (number of worker pods launched on cluster)
+lidar_points = [1000, 5000, 10_000]  # Number of points in a single point cloud (Depends on dataset)
+hours_per_model = total_runtime_hours / (len(num_workers) * len(lidar_points))
+seconds_per_model = hours_per_model * 3600  # TODO: How to estimate and control time?
 deploy_worker_template_path = "kubernetes_templates/worker_template.yaml"  # Template for running the experiments
 deploy_worker_experiment_path = None  # This file will be created from the template
 deploy_master_template_path = "kubernetes_templates/master_template.yaml"  # Template for running the experiments
@@ -48,8 +49,7 @@ namespace = "workloadc"
 worker_name = "lidar-worker"
 master_name = "lidar-master"
 kube_application_names = [worker_name, master_name]
-# Specify kafka topics and the number of partitions
-topics = {"grid_worker_input": 1, "grid_master_input": 1, "grid_worker_validate": 1, "grid_master_validate": 1}
+
 
 logging.basicConfig(
     filename=f'{time.time()}_experiment.log',
@@ -79,6 +79,8 @@ if args.smoketest:
     experiment_duration = 60  # Short experiment duration
     idle_before_start_2 = 10  # Shorter wait times
     idle_after_end = 10
+    num_workers = [4]  # Only one experiment
+    lidar_points = [1000]  # Only one experiment
 
 
 def scale_and_wait_for_replicas(num_replicas, application_name):
@@ -184,19 +186,26 @@ log(f"Removing any leftover containers from previous experiments...")
 clean_up()
 wait_for_terminate(0, master_name)
 wait_for_terminate(0, worker_name)
-log(f"Make sure the Kafka topics exist")
-for topic, num_partitions in topics.items():
-    # Make sure the topic is initialized with correct amount of partitions
-    kafka_init.init_kafka(kafka_servers=kafka_servers, num_partitions=num_partitions, topic_name=topic)
-    # Make sure the topic contains no messages from previous experiments
-    kafka_init.clear_topic(kafka_servers=kafka_servers, topic_name=topic)
 
+
+runs = [(workers, points) for workers in num_workers for points in lidar_points]
 for run in runs:
+    workers, points = run
     run_name = f"{run}"
-    log(f"Starting experiment with warehouse_MODEL={run_name}")
-    log("Starting to log yolo results to ")
-    lidar_csv_folder = f"yolo_outputs/{time.time()}_{run_name}/"
+    log(f"Starting experiment with workers={workers} and lidar_points={points}")
+    lidar_csv_folder = f"qos_outputs/{time.time()}_{run_name}/"
     # TODO: Add script for saving lidar QoS metrics
+
+    # Init and/or reset kafka
+    # Specify kafka topics and the number of partitions
+    topics = {"grid_worker_input": workers, "grid_master_input": 1, "grid_worker_validate": 1, "grid_master_validate": 1}
+    log(f"Make sure the Kafka topics exist")
+    for topic, num_partitions in topics.items():
+        # Make sure the topic is initialized with correct amount of partitions
+        kafka_init.init_kafka(kafka_servers=kafka_servers, num_partitions=num_partitions, topic_name=topic)
+        # Make sure the topic contains no messages from previous experiments
+        kafka_init.clear_topic(kafka_servers=kafka_servers, topic_name=topic)
+
     # Update yaml and deploy
     log("")
     yaml_config = {"KAFKA_SERVERS": kafka_servers,
@@ -205,15 +214,16 @@ for run in runs:
     deploy_worker_experiment_path = os.path.join(os.path.dirname(lidar_csv_folder), "worker.yaml")
     deploy_master_experiment_path = os.path.join(os.path.dirname(lidar_csv_folder), "master.yaml")
 
-    # Workers
+    # Update YAML (Workers)
     log(f"Creating a new deployment YAML with config {yaml_config} to {deploy_worker_experiment_path}")
     create_deployment_yaml.update_warehouse_model(deploy_worker_template_path, deploy_worker_experiment_path, yaml_config)
-    subprocess.run(["kubectl", "apply", "-f", deploy_worker_experiment_path])
-    scale_and_wait_for_replicas(application_name=worker_name, num_replicas=num_workers)
-
-    # Master
+    # Update YAML (Master)
     log(f"Creating a new deployment YAML with config {yaml_config} to {deploy_master_experiment_path}")
     create_deployment_yaml.update_warehouse_model(deploy_master_template_path, deploy_master_experiment_path, yaml_config)
+
+    # Deploy and scale applications
+    subprocess.run(["kubectl", "apply", "-f", deploy_worker_experiment_path])
+    scale_and_wait_for_replicas(application_name=worker_name, num_replicas=workers)
     subprocess.run(["kubectl", "apply", "-f", deploy_master_experiment_path])
     scale_and_wait_for_replicas(application_name=master_name, num_replicas=1)
 
@@ -246,17 +256,17 @@ for run in runs:
     log(f"Waiting for {idle_before_start_2} seconds")
     time.sleep(
         idle_before_start_2)  # Wait for slower consumers to start and to give some slack on the measurement data
-    # Feed images
+    # Feed frames
     log("")
-    log(f"Feeding data (num_images: {None} images -- num_workers: {None}).")
+    log(f"Feeding data (frames: {None} frames -- num_workers: {None}).")
 
     dataset_path = None
-    images_sent = feeder.run(dataset_path=dataset_path,
+    frames_sent = feeder.run(dataset_path=dataset_path,
                              num_items=1000,
                              num_threads=4,
                              kafka_servers=kafka_servers)
-    image_ids = set(x for x in range(images_sent))
-    log(f"Completed sending {images_sent} images.\n")
+    image_ids = set(x for x in range(frames_sent))
+    log(f"Completed sending {frames_sent} point clouds.\n")
     # Wait for results
     log("Waiting for results.")
     """
