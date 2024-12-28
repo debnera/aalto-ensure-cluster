@@ -82,12 +82,12 @@ def run(num_items=100, num_threads=4,
             if not alive_signal.is_active():
                 log(f'THREAD {nth_thread} WAS KILLED AT {time.time()}')
                 return
-            frame = sensor_frames[index]
+            frame = sensor_frames[index % len(sensor_frames)]
             data_as_bytes = frame.to_bytes()
             item_id = next(msg_count)
             item_id_encoded = str(item_id).encode('utf-8')
             kafka_producers[nth_thread - 1].push_msg('grid_worker_input', data_as_bytes, key=item_id_encoded)
-            index = (index + 1) % len(sensor_frames)
+            index += 1
 
         ended = time.time()
         log(f'THREAD {nth_thread} HAS FINISHED AT {ended} -- (took {ended - experiment_start}) s')

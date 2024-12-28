@@ -240,13 +240,15 @@ for run in runs:
     log("")
     log("Sending some data to check that at least one pod can process data.")
 
-    images_sent = dummy_feeder.feed_data(5, kafka_servers=kafka_servers)
-    image_ids = set(x for x in range(images_sent))
+    msgs_sent = feeder.run(num_items=5,
+                           num_threads=workers,
+                           kafka_servers=kafka_servers)
+    msg_ids = set(x for x in range(msgs_sent))
     log("Waiting for results on the test image.")
     temp_validator = ValidationThread(kafka_servers=kafka_servers, kafka_topic="grid_master_validate")
-    num_received = temp_validator.wait_for_msg_ids(image_ids, timeout_s=600)
+    num_received = temp_validator.wait_for_msg_ids(msg_ids, timeout_s=600)
 
-    if num_received != images_sent:
+    if num_received != msgs_sent:
         log("Test timed out!")
         # TODO: How to handle this situation?
     else:
@@ -270,20 +272,17 @@ for run in runs:
                                         msg_callback=worker_qos_saver.process_event)
     worker_validator.start()
 
-    dataset_path = f"datasets/robots-6_points-{points}.hdf5"
-    TODOOOOOOO  # FEEDER DATASET PATH
-    frames_sent = feeder.run(dataset_path=dataset_path,
-                             num_items=1000, # TODO: how many items?
+    frames_sent = feeder.run(num_items=1000, # TODO: how many items?
                              num_threads=workers,
                              kafka_servers=kafka_servers)
-    image_ids = set(x for x in range(frames_sent))
+    msg_ids = set(x for x in range(frames_sent))
     log(f"Completed sending {frames_sent} point clouds.\n")
     # Wait for results
     log("Waiting for results.")
 
-    num_received_1 = master_validator.wait_for_msg_ids(image_ids, timeout_s=600)
-    num_received_2 = worker_validator.wait_for_msg_ids(image_ids, timeout_s=600)
-    log(f"Sent {images_sent}, received {num_received_1} and {num_received_2} messages from master and worker respectively.")
+    num_received_1 = master_validator.wait_for_msg_ids(msg_ids, timeout_s=600)
+    num_received_2 = worker_validator.wait_for_msg_ids(msg_ids, timeout_s=600)
+    log(f"Sent {msgs_sent}, received {num_received_1} and {num_received_2} messages from master and worker respectively.")
 
     log(f"Waiting for {idle_after_end} seconds")
     time.sleep(idle_after_end)
