@@ -6,7 +6,7 @@ from kafka import KafkaConsumer
 from kafka.errors import KafkaTimeoutError
 
 
-class KafkaConsumerThread(threading.Thread):
+class ValidationThread(threading.Thread):
     def __init__(self, kafka_servers, kafka_topic, msg_callback=None, timeout_s=999999):
         super().__init__()
         self.msg_ids = None  # Make sure the ids are strings
@@ -39,6 +39,7 @@ class KafkaConsumerThread(threading.Thread):
             # Start if not already running
             self.start()
         self.join()
+        return len(self.received_ids)
 
     def run(self):
         print(f"Starting message consumption from topic {self.topic}")
