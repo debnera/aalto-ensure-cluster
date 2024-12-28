@@ -1,0 +1,14 @@
+path: master_{run}
+path: worker_{run}
+
+lidar_worker_validate
+lidar_master_validate
+
+validate(msg_callback=save_to_csv)
+
+- generalized save_to_csv
+--> Needs path name
+
+- validate
+--> Could be threaded, since we have two validation topics
+--> wait until x messages

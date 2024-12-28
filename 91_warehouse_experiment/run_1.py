@@ -17,6 +17,8 @@ import yaml
 import create_deployment_yaml
 from warehouse import burst_feeder
 from warehouse import kafka_init
+from warehouse.msg_to_csv import MessageToCSVProcessor
+from warehouse import validate_results
 from data_extractor import extractor
 import datetime
 import argparse  # New import for argument parsing
@@ -193,8 +195,10 @@ for run in runs:
     workers, points = run
     run_name = f"{run}"
     log(f"Starting experiment with workers={workers} and lidar_points={points}")
-    lidar_csv_folder = f"qos_outputs/{time.time()}_{run_name}/"
-    # TODO: Add script for saving lidar QoS metrics
+    master_csv_folder = f"qos_outputs/{time.time()}_{run_name}_master/"
+    worker_csv_folder = f"qos_outputs/{time.time()}_{run_name}_worker/"
+    master_qos_saver = MessageToCSVProcessor(master_csv_folder)
+    worker_qos_saver = MessageToCSVProcessor(worker_csv_folder)
 
     # Init and/or reset kafka
     # Specify kafka topics and the number of partitions
@@ -211,8 +215,8 @@ for run in runs:
     yaml_config = {"KAFKA_SERVERS": kafka_servers,
                    "VERBOSE": "FALSE",
                    "VISUALIZE": "VISUALIZE"}
-    deploy_worker_experiment_path = os.path.join(os.path.dirname(lidar_csv_folder), "worker.yaml")
-    deploy_master_experiment_path = os.path.join(os.path.dirname(lidar_csv_folder), "master.yaml")
+    deploy_worker_experiment_path = os.path.join(os.path.dirname(worker_csv_folder), "worker.yaml")
+    deploy_master_experiment_path = os.path.join(os.path.dirname(master_csv_folder), "master.yaml")
 
     # Update YAML (Workers)
     log(f"Creating a new deployment YAML with config {yaml_config} to {deploy_worker_experiment_path}")
@@ -236,7 +240,7 @@ for run in runs:
     log("")
     log("Sending some data to check that at least one pod can process data.")
     """
-    TODO: Add validation for lidar
+    #TODO: Add validation for lidar
     
     images_sent = dummy_feeder.feed_data(5, kafka_servers=kafka_servers)
     image_ids = set(x for x in range(images_sent))
@@ -260,10 +264,10 @@ for run in runs:
     log("")
     log(f"Feeding data (frames: {None} frames -- num_workers: {None}).")
 
-    dataset_path = None
+    dataset_path = f"datasets/robots-6_points-{points}.hdf5"
     frames_sent = feeder.run(dataset_path=dataset_path,
-                             num_items=1000,
-                             num_threads=4,
+                             num_items=1000, # TODO: how many items?
+                             num_threads=workers,
                              kafka_servers=kafka_servers)
     image_ids = set(x for x in range(frames_sent))
     log(f"Completed sending {frames_sent} point clouds.\n")
