@@ -22,6 +22,8 @@ from warehouse.validate_results import ValidationThread
 from data_extractor import extractor
 import datetime
 import argparse  # New import for argument parsing
+from warehouse.zip_snapshot import zip_snapshot
+
 
 # Argument parser for command-line arguments
 parser = argparse.ArgumentParser(description="Run warehouse experiments with optional smoketest.")
@@ -40,13 +42,13 @@ num_workers = [1, 2, 3, 4, 5, 6]  # Number of lidar workers (number of worker po
 lidar_points = [1000, 5000, 10_000]  # Number of points in a single point cloud (Depends on dataset)
 hours_per_model = total_runtime_hours / (len(num_workers) * len(lidar_points))
 seconds_per_model = hours_per_model * 3600  # TODO: How to estimate and control time?
+data_per_run = 1000  # TODO: how many items per unit of time?
 deploy_worker_template_path = "kubernetes_templates/worker_template.yaml"  # Template for running the experiments
 deploy_worker_experiment_path = None  # This file will be created from the template
 deploy_master_template_path = "kubernetes_templates/master_template.yaml"  # Template for running the experiments
 deploy_master_experiment_path = None  # This file will be created from the template
 # kafka_servers = 'localhost:10001,localhost:10002,localhost:10003'  # Servers for local testing
 kafka_servers = "130.233.193.117:10001"  # Servers for running on our cluster
-num_workers = 4
 namespace = "workloadc"
 worker_name = "lidar-worker"
 master_name = "lidar-master"
@@ -79,6 +81,7 @@ if args.smoketest:
         kafka_servers = "localhost:10001"
 
     experiment_duration = 60  # Short experiment duration
+    data_per_run = 100
     idle_before_start_2 = 10  # Shorter wait times
     idle_after_end = 10
     num_workers = [4]  # Only one experiment
@@ -133,55 +136,6 @@ def get_formatted_time():
     return formatted_time
 
 
-def zip_snapshot(snapshot_path, yolo_csv_folder=None, name="yolov8n"):
-    pass
-    """
-    import os
-    import zipfile
-    import shutil
-    start_zip_time = time.time()
-    # Copy yolo CSVs
-    if yolo_csv_folder is not None:
-        # Copy contents from yolo_csv_folder to snapshot_path
-        destination_yolo_folder = os.path.join(snapshot_path, "yolo_outputs")
-        shutil.copytree(yolo_csv_folder, destination_yolo_folder)
-        log(f"Copied warehouse CSV files from {yolo_csv_folder} to {destination_yolo_folder}")
-    # Copying the current script and its configurations to the snapshot
-    current_script_path = __file__  # Path to the current script
-    script_destination = os.path.join(snapshot_path, os.path.basename(current_script_path))
-    shutil.copy2(current_script_path, script_destination)
-    log(f"Copied current script to {script_destination}")
-    # Extracting git commit and date
-    result = subprocess.run(["git", "log", "-1", "--pretty=format:%H %ad"], capture_output=True, text=True)
-    git_commit_info = result.stdout.strip()
-    git_info_path = os.path.join(snapshot_path, "git_commit_info.txt")
-    with open(git_info_path, "w") as git_info_file:
-        git_info_file.write(git_commit_info)
-    log(f"Copied git commit info to {git_info_path}")
-    # Create a zip file from the snapshot_path
-    zip_filename = f"{int(start_zip_time)}_{name}.zip"
-    zip_filepath = os.path.join(os.path.dirname(snapshot_path), zip_filename)
-    with zipfile.ZipFile(zip_filepath, 'w', zipfile.ZIP_DEFLATED) as zipf:
-        for root, _, files in os.walk(snapshot_path):
-            for file in files:
-                file_path = os.path.join(root, file)
-                arcname = os.path.relpath(file_path, snapshot_path)
-                zipf.write(file_path, arcname)
-    end_zip_time = time.time()
-    zip_duration = end_zip_time - start_zip_time
-    zip_size = os.path.getsize(zip_filepath)
-    # Optionally delete the original files
-    delete_original = True  # Set this to False if you do not want to delete
-    if delete_original:
-        shutil.rmtree(snapshot_path)
-        if yolo_csv_folder is not None:
-            shutil.rmtree(yolo_csv_folder)
-        log(f"Deleting original files in {snapshot_path} and {yolo_csv_folder}")
-    # Log the details
-    log(f"Zipping completed in {zip_duration:.2f} seconds")
-    log(f"Zip file size: {zip_size / (1024 * 1024):.2f} MB")
-    log(f"Zip file path: {zip_filepath}")
-    """
 
 
 log(f"Removing any leftover containers from previous experiments...")
@@ -195,19 +149,21 @@ for run in runs:
     workers, points = run
     run_name = f"{run}"
     log(f"Starting experiment with workers={workers} and lidar_points={points}")
-    master_csv_folder = f"qos_outputs/{time.time()}_{run_name}_master/"
-    worker_csv_folder = f"qos_outputs/{time.time()}_{run_name}_worker/"
+    master_csv_folder = f"qos_outputs/{time.time()}_{run_name}_master/".replace(" ", "").replace(",", ".")
+    worker_csv_folder = f"qos_outputs/{time.time()}_{run_name}_worker/".replace(" ", "").replace(",", ".")
+    os.makedirs(master_csv_folder, exist_ok=True)
+    os.makedirs(worker_csv_folder, exist_ok=True)
     master_qos_saver = MessageToCSVProcessor(master_csv_folder)
     worker_qos_saver = MessageToCSVProcessor(worker_csv_folder)
 
     # Init and/or reset kafka
     # Specify kafka topics and the number of partitions
     topics = {"grid_worker_input": workers, "grid_master_input": 1, "grid_worker_validate": 1, "grid_master_validate": 1}
-    log(f"Make sure the Kafka topics exist")
+    log(f"Making sure the Kafka topics exist")
     for topic, num_partitions in topics.items():
-        # Make sure the topic is initialized with correct amount of partitions
+        # Making sure the topic is initialized with correct amount of partitions
         kafka_init.init_kafka(kafka_servers=kafka_servers, num_partitions=num_partitions, topic_name=topic)
-        # Make sure the topic contains no messages from previous experiments
+        # Making sure the topic contains no messages from previous experiments
         kafka_init.clear_topic(kafka_servers=kafka_servers, topic_name=topic)
 
     # Update yaml and deploy
@@ -272,16 +228,16 @@ for run in runs:
                                         msg_callback=worker_qos_saver.process_event)
     worker_validator.start()
 
-    frames_sent = feeder.run(num_items=1000, # TODO: how many items?
+    frames_sent = feeder.run(num_items=data_per_run,
                              num_threads=workers,
                              kafka_servers=kafka_servers)
     msg_ids = set(x for x in range(frames_sent))
     log(f"Completed sending {frames_sent} point clouds.\n")
     # Wait for results
-    log("Waiting for results.")
-
-    num_received_1 = master_validator.wait_for_msg_ids(msg_ids, timeout_s=600)
+    log("Waiting for worker results.")
     num_received_2 = worker_validator.wait_for_msg_ids(msg_ids, timeout_s=600)
+    log("Waiting for master results.")
+    num_received_1 = master_validator.wait_for_msg_ids(msg_ids, timeout_s=600)
     log(f"Sent {msgs_sent}, received {num_received_1} and {num_received_2} messages from master and worker respectively.")
 
     log(f"Waiting for {idle_after_end} seconds")
@@ -308,19 +264,19 @@ for run in runs:
     # Zip all experiment data and delete unzipped data
     log("Zipping all experiment data...")
     snapshot_path = snapshot_results["path"]
-    """
-    TODO: Implement zipping
-    zip_snapshot(snapshot_path, yolo_csv_folder, name=f"{run_name}")
-    """
+
+    zip_snapshot(snapshot_path, [master_csv_folder, worker_csv_folder],
+                 name=f"{run_name}", log_func=log)
 
     log(f"Zipping done\n")
-    """
-    TODO: Wait for delayed results (or just empty the msg queues?)
-    log(f"Waiting for any delayed images before the next experiment...")
-    leftover_images = dummy_validate.wait_for_results(image_ids, kafka_servers=kafka_servers, msg_callback=None,
-                                                      timeout_s=10)
-    log(f"Received {leftover_images} delayed images.")
-    """
+
+    log(f"Waiting for any delayed messages before the next experiment...")
+    master_validator = ValidationThread(kafka_servers=kafka_servers, kafka_topic="grid_master_validate")
+    leftover_msgs = master_validator.wait_for_msg_ids(msg_ids, timeout_s=10)
+    worker_validator = ValidationThread(kafka_servers=kafka_servers, kafka_topic="grid_worker_validate")
+    leftover_msgs += worker_validator.wait_for_msg_ids(msg_ids, timeout_s=10)
+    log(f"Received {leftover_msgs} delayed messages.")
+
 
     log(f"Experiment with warehouse_MODEL={run_name} completed.\n\n")
 log("All experiments completed.")

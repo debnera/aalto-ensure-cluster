@@ -1,13 +1,16 @@
-# This script launches the local Kafka setup, which requires knowing
-# the IP address of this local computer. Simply using 'localhost' does not work.
-# Therefore, the script fetches the IP and launches Kafka with it.
-
-# Function to get the current local IP address
+# Function to get a single, valid local IP address
 function Get-LocalIPAddress {
-   # Retrieve the local IP address by filtering non-loopback IPv4 addresses
-   $ipconfig = Get-NetIPAddress | Where-Object { $_.AddressFamily -eq 'IPv4' -and $_.IPAddress -notlike '127.*' }
+   # Retrieve the local IP addresses by filtering non-loopback IPv4 addresses
+   # Prioritize non-link-local addresses (not in 169.254.x.x range)
+   $ipconfig = Get-NetIPAddress | Where-Object {
+      $_.AddressFamily -eq 'IPv4' -and
+              $_.IPAddress -notlike '127.*' -and
+              $_.IPAddress -notlike '169.254.*'
+   }
+
+   # If multiple IPs are still present, select the first valid one (customizable logic)
    if ($ipconfig) {
-      return $ipconfig.IPAddress
+      return $ipconfig.IPAddress | Select-Object -First 1
    } else {
       return $null
    }
@@ -18,7 +21,7 @@ $LOCAL_IP = Get-LocalIPAddress
 
 # Check if IP address retrieval was successful
 if (-not $LOCAL_IP) {
-   Write-Host "Error: Could not retrieve IP address." -ForegroundColor Red
+   Write-Host "Error: Could not retrieve a valid local IP address." -ForegroundColor Red
    exit 1
 } else {
    Write-Host "Local IP address is set to $LOCAL_IP" -ForegroundColor Green

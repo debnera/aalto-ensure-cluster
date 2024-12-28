@@ -4,9 +4,9 @@ import math
 import time
 from threading import Thread
 
-from utils.kafka_utils import create_producer
-from utils.lidar_dataset_reader import load_to_memory
-from utils.misc import resource_exists, log, create_lock
+from .utils.kafka_utils import create_producer
+from .utils.lidar_dataset_reader import load_to_memory
+from .utils.misc import resource_exists, log, create_lock
 
 """
 Burst feeder: Send specified number of sensor data as fast as possible.

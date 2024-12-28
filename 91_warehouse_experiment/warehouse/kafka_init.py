@@ -3,6 +3,8 @@ import time
 from threading import Thread
 
 from confluent_kafka.admin import AdminClient, NewTopic
+from confluent_kafka import TopicPartition
+
 
 from .utils.kafka_utils import create_producer, create_consumer
 from .utils.misc import create_lock
@@ -109,12 +111,27 @@ def init_kafka(kafka_servers, topic_name, num_partitions=5):
 
 def clear_topic(kafka_servers, topic_name):
     """
-    Clears all messages from the given topic by resetting the consumer group's offsets.
+    Clears all messages from the given topic by resetting the consumer group's offsets to the end.
     """
     try:
         consumer_client = create_consumer(topic_name, kafka_servers=kafka_servers)
-        partitions = consumer_client.kafka_client.assignment()
-        consumer_client.kafka_client.seek_to_end(partitions)
+
+        # Get the partitions assigned to the consumer
+        metadata = consumer_client.kafka_client.list_topics()
+        partitions = [p for p in metadata.topics[topic_name].partitions.keys()]
+
+        # Create TopicPartition objects for each partition
+        topic_partitions = [TopicPartition(topic_name, p) for p in partitions]
+
+        # Assign the consumer to the partitions
+        consumer_client.kafka_client.assign(topic_partitions)
+
+        # Seek to end for each partition
+        for tp in topic_partitions:
+            consumer_client.kafka_client.seek(tp)  # Default moves to the latest offset
+
         print(f"Cleared all messages in topic: {topic_name}")
+
     except Exception as e:
         print(f"Error clearing topic {topic_name}: {e}")
+

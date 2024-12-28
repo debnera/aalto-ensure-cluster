@@ -1,4 +1,4 @@
-def zip_snapshot(snapshot_path, yolo_csv_folders=None, name="yolov8n"):
+def zip_snapshot(snapshot_path, yolo_csv_folders=None, name="yolov8n", log_func=print):
     import os
     import zipfile
     import shutil
@@ -17,21 +17,21 @@ def zip_snapshot(snapshot_path, yolo_csv_folders=None, name="yolov8n"):
             # Create a unique destination folder for each input folder
             destination_yolo_folder = os.path.join(snapshot_path, f"yolo_outputs_{idx}")
             shutil.copytree(folder, destination_yolo_folder)
-            log(f"Copied warehouse CSV files from {folder} to {destination_yolo_folder}")
+            log_func(f"Copied warehouse CSV files from {folder} to {destination_yolo_folder}")
 
     # Copying the current script and its configurations to the snapshot
     current_script_path = __file__  # Path to the current script
     script_destination = os.path.join(snapshot_path, os.path.basename(current_script_path))
     shutil.copy2(current_script_path, script_destination)
-    log(f"Copied current script to {script_destination}")
+    log_func(f"Copied current script to {script_destination}")
 
     # Extracting git commit and date
-    result = subprocess.run(["git", "log", "-1", "--pretty=format:%H %ad"], capture_output=True, text=True)
+    result = subprocess.run(["git", "log_func", "-1", "--pretty=format:%H %ad"], capture_output=True, text=True)
     git_commit_info = result.stdout.strip()
     git_info_path = os.path.join(snapshot_path, "git_commit_info.txt")
     with open(git_info_path, "w") as git_info_file:
         git_info_file.write(git_commit_info)
-    log(f"Copied git commit info to {git_info_path}")
+    log_func(f"Copied git commit info to {git_info_path}")
 
     # Create a zip file from the snapshot_path
     zip_filename = f"{int(start_zip_time)}_{name}.zip"
@@ -54,9 +54,9 @@ def zip_snapshot(snapshot_path, yolo_csv_folders=None, name="yolov8n"):
         for folder in yolo_csv_folders:
             if folder is not None:
                 shutil.rmtree(folder)
-        log(f"Deleting original files in {snapshot_path} and provided YOLO folders")
+        log_func(f"Deleting original files in {snapshot_path} and provided YOLO folders")
 
     # Log the details
-    log(f"Zipping completed in {zip_duration:.2f} seconds")
-    log(f"Zip file size: {zip_size / (1024 * 1024):.2f} MB")
-    log(f"Zip file path: {zip_filepath}")
+    log_func(f"Zipping completed in {zip_duration:.2f} seconds")
+    log_func(f"Zip file size: {zip_size / (1024 * 1024):.2f} MB")
+    log_func(f"Zip file path: {zip_filepath}")
