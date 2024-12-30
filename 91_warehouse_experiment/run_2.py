@@ -1,8 +1,14 @@
 """
 Run_2: Longer run
 
-- 1000 pcl -> less than 1 minute experiment with workers=? and lidar_points=?
+Notes from run_1:
+--- 1000 pcl -> less than 1 minute experiment with workers=? and lidar_points=?
+--- push 1000 pcl (5000 points per pcl) in 3 seconds
+
+Changes to run_2:
 - Increase experiment to 10000 pcl messages
+- Disable non-functioning kafka topic clearing
+
 
 """
 
@@ -163,8 +169,8 @@ for run in runs:
     for topic, num_partitions in topics.items():
         # Making sure the topic is initialized with correct amount of partitions
         kafka_init.init_kafka(kafka_servers=kafka_servers, num_partitions=num_partitions, topic_name=topic)
-        # Making sure the topic contains no messages from previous experiments
-        kafka_init.clear_topic(kafka_servers=kafka_servers, topic_name=topic)
+        # TODO: Making sure the topic contains no messages from previous experiments
+        # kafka_init.clear_topic(kafka_servers=kafka_servers, topic_name=topic)
 
     # Update yaml and deploy
     log("")
