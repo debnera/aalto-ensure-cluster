@@ -88,8 +88,9 @@ def init_kafka(kafka_servers, topic_name, num_partitions=5):
         consumer_thread = Thread(target=cons, args=(thread_lock,))
         consumer_thread.start()
 
-        max_attempts = 10
+        max_attempts = 1
         time.sleep(2)
+        # TODO: This does not seem to work well, since the messages are consumed by the deployed pods
         for i in range(max_attempts):
             print(f"Trying to send msg to {topic_name}")
 
@@ -114,6 +115,7 @@ def clear_topic(kafka_servers, topic_name):
     Clears all messages from the given topic by resetting the consumer group's offsets to the end.
     """
     try:
+        # TODO: Clearing topics this way does not seem to work (produces errors)
         consumer_client = create_consumer(topic_name, kafka_servers=kafka_servers)
 
         # Get the partitions assigned to the consumer

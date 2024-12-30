@@ -34,6 +34,7 @@ args = parser.parse_args()  # Parse arguments
 
 feeder = burst_feeder
 # feeder = burst_feeder  # Use linear_feeder or day_night_feeder
+kafka_wait_timeout = 600
 idle_before_start_1 = 120 # (seconds) Wait for application instances to receive their kafka assignments - otherwise might get stuck
 idle_before_start_2 = 0.5 * 60  # (seconds) Additional wait after Kafka is verified working
 idle_after_end = 0.5 * 60  # (seconds) Catch the tail of the experiment metrics
@@ -82,10 +83,12 @@ if args.smoketest:
 
     experiment_duration = 60  # Short experiment duration
     data_per_run = 100
+    idle_before_start_1 = 20
     idle_before_start_2 = 10  # Shorter wait times
     idle_after_end = 10
     num_workers = [4]  # Only one experiment
     lidar_points = [1000]  # Only one experiment
+    kafka_wait_timeout = 10
 
 
 def scale_and_wait_for_replicas(num_replicas, application_name):
@@ -147,14 +150,12 @@ wait_for_terminate(0, worker_name)
 runs = [(workers, points) for workers in num_workers for points in lidar_points]
 for run in runs:
     workers, points = run
+    dataset_path = f"datasets/robots-{workers}_points-{points}.hdf5"
     run_name = f"{run}"
     log(f"Starting experiment with workers={workers} and lidar_points={points}")
-    master_csv_folder = f"qos_outputs/{time.time()}_{run_name}_master/".replace(" ", "").replace(",", ".")
-    worker_csv_folder = f"qos_outputs/{time.time()}_{run_name}_worker/".replace(" ", "").replace(",", ".")
-    os.makedirs(master_csv_folder, exist_ok=True)
-    os.makedirs(worker_csv_folder, exist_ok=True)
-    master_qos_saver = MessageToCSVProcessor(master_csv_folder)
-    worker_qos_saver = MessageToCSVProcessor(worker_csv_folder)
+    qos_csv_folder = f"qos_outputs/{time.time()}_{run_name}/".replace(" ", "").replace(",", ".")
+    os.makedirs(qos_csv_folder, exist_ok=True)
+
 
     # Init and/or reset kafka
     # Specify kafka topics and the number of partitions
@@ -171,8 +172,8 @@ for run in runs:
     yaml_config = {"KAFKA_SERVERS": kafka_servers,
                    "VERBOSE": "FALSE",
                    "VISUALIZE": "VISUALIZE"}
-    deploy_worker_experiment_path = os.path.join(os.path.dirname(worker_csv_folder), "worker.yaml")
-    deploy_master_experiment_path = os.path.join(os.path.dirname(master_csv_folder), "master.yaml")
+    deploy_worker_experiment_path = os.path.join(os.path.dirname(qos_csv_folder), "worker.yaml")
+    deploy_master_experiment_path = os.path.join(os.path.dirname(qos_csv_folder), "master.yaml")
 
     # Update YAML (Workers)
     log(f"Creating a new deployment YAML with config {yaml_config} to {deploy_worker_experiment_path}")
@@ -196,13 +197,16 @@ for run in runs:
     log("")
     log("Sending some data to check that at least one pod can process data.")
 
-    msgs_sent = feeder.run(num_items=5,
+    msgs_sent = feeder.run(dataset_path=dataset_path,
+                           num_items=5,
                            num_threads=workers,
                            kafka_servers=kafka_servers)
+    log(f"Sent {msgs_sent} messages to Kafka")
     msg_ids = set(x for x in range(msgs_sent))
-    log("Waiting for results on the test image.")
+    log(f"Waiting for msg ids: {msg_ids}.")
     temp_validator = ValidationThread(kafka_servers=kafka_servers, kafka_topic="grid_master_validate")
-    num_received = temp_validator.wait_for_msg_ids(msg_ids, timeout_s=600)
+    temp_validator.start()
+    num_received = temp_validator.wait_for_msg_ids(msg_ids, timeout_s=kafka_wait_timeout)
 
     if num_received != msgs_sent:
         log("Test timed out!")
@@ -221,6 +225,8 @@ for run in runs:
     log("")
     log(f"Feeding data (frames: {None} frames -- num_workers: {None}).")
 
+    master_qos_saver = MessageToCSVProcessor(qos_csv_folder, name_prefix="master")
+    worker_qos_saver = MessageToCSVProcessor(qos_csv_folder, name_prefix="worker")
     master_validator = ValidationThread(kafka_servers=kafka_servers, kafka_topic="grid_master_validate",
                                         msg_callback=master_qos_saver.process_event)
     master_validator.start()
@@ -228,16 +234,17 @@ for run in runs:
                                         msg_callback=worker_qos_saver.process_event)
     worker_validator.start()
 
-    frames_sent = feeder.run(num_items=data_per_run,
+    frames_sent = feeder.run(dataset_path=dataset_path,
+                             num_items=data_per_run,
                              num_threads=workers,
                              kafka_servers=kafka_servers)
     msg_ids = set(x for x in range(frames_sent))
     log(f"Completed sending {frames_sent} point clouds.\n")
     # Wait for results
     log("Waiting for worker results.")
-    num_received_2 = worker_validator.wait_for_msg_ids(msg_ids, timeout_s=600)
+    num_received_2 = worker_validator.wait_for_msg_ids(msg_ids, timeout_s=kafka_wait_timeout)
     log("Waiting for master results.")
-    num_received_1 = master_validator.wait_for_msg_ids(msg_ids, timeout_s=600)
+    num_received_1 = master_validator.wait_for_msg_ids(msg_ids, timeout_s=kafka_wait_timeout)
     log(f"Sent {msgs_sent}, received {num_received_1} and {num_received_2} messages from master and worker respectively.")
 
     log(f"Waiting for {idle_after_end} seconds")
@@ -265,15 +272,17 @@ for run in runs:
     log("Zipping all experiment data...")
     snapshot_path = snapshot_results["path"]
 
-    zip_snapshot(snapshot_path, [master_csv_folder, worker_csv_folder],
+    zip_snapshot(snapshot_path, [qos_csv_folder],
                  name=f"{run_name}", log_func=log)
 
     log(f"Zipping done\n")
 
     log(f"Waiting for any delayed messages before the next experiment...")
     master_validator = ValidationThread(kafka_servers=kafka_servers, kafka_topic="grid_master_validate")
+    master_validator.start()
     leftover_msgs = master_validator.wait_for_msg_ids(msg_ids, timeout_s=10)
     worker_validator = ValidationThread(kafka_servers=kafka_servers, kafka_topic="grid_worker_validate")
+    worker_validator.start()
     leftover_msgs += worker_validator.wait_for_msg_ids(msg_ids, timeout_s=10)
     log(f"Received {leftover_msgs} delayed messages.")
 

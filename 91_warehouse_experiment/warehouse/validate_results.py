@@ -32,12 +32,14 @@ class ValidationThread(threading.Thread):
         )
 
     def wait_for_msg_ids(self, msg_ids, timeout_s=10):
-        print(f"Waiting for {len(self.msg_ids)} messages with timeout {timeout_s} seconds")
         self.msg_ids = set(str(x) for x in msg_ids)  # Make sure the ids are strings
         self.timeout_s = timeout_s
-        if not self.is_alive():
-            # Start if not already running
-            self.start()
+        if self.get_num_msg_remaining() == 0:
+            print(f"Successfully received all {len(self.msg_ids)} messages! "
+                  f"(duplicates: {self.duplicates}, unknowns: {self.unknowns})")
+            self.running = False
+        else:
+            print(f"Waiting for {len(self.msg_ids)} messages with timeout {timeout_s} seconds")
         self.join()
         return len(self.received_ids)
 
@@ -52,12 +54,13 @@ class ValidationThread(threading.Thread):
                 self.running = False
                 break
 
+            poll_timeout_seconds = 5
             try:
-                messages = self.consumer.poll(timeout_ms=self.timeout_s * 1000)
+                messages = self.consumer.poll(timeout_ms=poll_timeout_seconds * 1000)
             except KafkaTimeoutError:
-                print(f"KafkaTimeoutError! (exceeded {self.timeout_s} seconds)")
-                self.print_stats()
-                self.running = False
+                print(f"KafkaTimeoutError! (exceeded {poll_timeout_seconds} seconds)")
+                # self.print_stats()
+                # self.running = False
                 break
 
             if not messages:
@@ -79,7 +82,7 @@ class ValidationThread(threading.Thread):
                         print(
                             f"WARNING: Received duplicate of ID: {msg_id} with timestamp: {message.value['timestamps']}")
                         self.duplicates += 1
-                    elif msg_id not in self.msg_ids:
+                    elif self.msg_ids is not None and msg_id not in self.msg_ids:
                         print(f"WARNING: Received unknown ID: {msg_id} with timestamp: {message.value['timestamps']}")
                         self.unknowns += 1
                     else:
@@ -125,8 +128,8 @@ if __name__ == '__main__':
     def msg_callback(msg):
         print(f"Callback received message: {msg}")
 
-    # Create a new KafkaConsumerThread instance
-    consumer_thread = KafkaConsumerThread(
+    # Create a new ValidationThread instance
+    consumer_thread = ValidationThread(
         kafka_servers=kafka_servers,
         kafka_topic=kafka_topic,
         msg_callback=msg_callback

@@ -3,8 +3,9 @@ import os
 
 
 class MessageToCSVProcessor:
-    def __init__(self, output_folder, save_interval=1000):
+    def __init__(self, output_folder, name_prefix, save_interval=1000):
         self.messages = []
+        self.name_prefix = name_prefix
         self.output_folder = output_folder
         self.save_interval = save_interval
         self.save_counter = 0
@@ -20,7 +21,7 @@ class MessageToCSVProcessor:
     def save_and_clear(self):
         if len(self.messages) == 0:
             return
-        self.save_to_csv(f"{self.output_folder}/{self.save_counter}.csv")
+        self.save_to_csv(f"{self.output_folder}/{self.name_prefix}_{self.save_counter}.csv")
         self.save_counter += 1
         self.messages = []
 
