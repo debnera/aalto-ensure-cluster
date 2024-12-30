@@ -1,5 +1,8 @@
 """
-Run_1: First test run to get some idea of how the experiment behaves.
+Run_2: Longer run
+
+- 1000 pcl -> less than 1 minute experiment with workers=? and lidar_points=?
+- Increase experiment to 10000 pcl messages
 
 """
 
@@ -39,7 +42,7 @@ num_workers = [1, 2, 3, 4, 5, 6]  # Number of lidar workers (number of worker po
 lidar_points = [1000, 5000, 10_000]  # Number of points in a single point cloud (Depends on dataset)
 hours_per_model = total_runtime_hours / (len(num_workers) * len(lidar_points))
 seconds_per_model = hours_per_model * 3600  # TODO: How to estimate and control time?
-data_per_run = 1000  # TODO: how many items per unit of time?
+data_per_run = 10000  # TODO: how many items per unit of time?
 deploy_worker_template_path = "kubernetes_templates/worker_template.yaml"  # Template for running the experiments
 deploy_worker_experiment_path = None  # This file will be created from the template
 deploy_master_template_path = "kubernetes_templates/master_template.yaml"  # Template for running the experiments
