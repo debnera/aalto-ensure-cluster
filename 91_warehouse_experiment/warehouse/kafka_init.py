@@ -76,39 +76,39 @@ def init_kafka(kafka_servers, topic_name, num_partitions=5):
     time.sleep(1)
     print(json.dumps(query_topics(), indent=4))
 
-    def test_topic(topic_name):
-        thread_lock = create_lock()
+def test_topic(kafka_servers, topic_name):
+    """ Test that the given topic is can send and receive messages """
+    thread_lock = create_lock()
 
-        def cons(lock):
-            kafka_client = create_consumer(topic_name, kafka_servers=kafka_servers)
+    def cons(lock):
+        kafka_client = create_consumer(topic_name, kafka_servers=kafka_servers)
 
-            while lock.is_active():
-                kafka_client.poll_next(1, lock, lambda *_: lock.kill())
+        while lock.is_active():
+            kafka_client.poll_next(1, lock, lambda *_: lock.kill())
 
-        consumer_thread = Thread(target=cons, args=(thread_lock,))
-        consumer_thread.start()
+    consumer_thread = Thread(target=cons, args=(thread_lock,))
+    consumer_thread.start()
 
-        max_attempts = 1
+    max_attempts = 1
+    time.sleep(2)
+    # TODO: This does not seem to work well, since the messages are consumed by the deployed pods
+    for i in range(max_attempts):
+        print(f"Trying to send msg to {topic_name}")
+
+        kafka_client = create_producer(kafka_servers=kafka_servers)
+        kafka_client.push_msg(topic_name, json.dumps({"test": "testing"}).encode('UTF-8'))
         time.sleep(2)
-        # TODO: This does not seem to work well, since the messages are consumed by the deployed pods
-        for i in range(max_attempts):
-            print(f"Trying to send msg to {topic_name}")
+        if not thread_lock.is_active():
+            print(f"Received msg from topic {topic_name}")
+            break  # Everything works
+        else:
+            print(f"Got nothing from topic {topic_name}")
 
-            kafka_client = create_producer(kafka_servers=kafka_servers)
-            kafka_client.push_msg(topic_name, json.dumps({"test": "testing"}).encode('UTF-8'))
-            time.sleep(2)
-            if not thread_lock.is_active():
-                print(f"Received msg from topic {topic_name}")
-                break  # Everything works
-            else:
-                print(f"Got nothing from topic {topic_name}")
+    if thread_lock.is_active():
+        print(f"Topic {topic_name} seems stuck...")
+        thread_lock.kill()
+    consumer_thread.join()
 
-        if thread_lock.is_active():
-            print(f"Topic {topic_name} seems stuck...")
-            thread_lock.kill()
-        consumer_thread.join()
-
-    test_topic(topic_name)
 
 def clear_topic(kafka_servers, topic_name):
     """
