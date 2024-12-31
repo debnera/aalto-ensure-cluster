@@ -1,4 +1,4 @@
-def zip_snapshot(snapshot_path, yolo_csv_folders=None, name="yolov8n", log_func=print):
+def zip_snapshot(snapshot_path, qos_csv_folder=None, name="warehouse", log_func=print):
     import os
     import zipfile
     import shutil
@@ -7,17 +7,17 @@ def zip_snapshot(snapshot_path, yolo_csv_folders=None, name="yolov8n", log_func=
 
     start_zip_time = time.time()
 
-    # Ensure yolo_csv_folders is a list
-    if yolo_csv_folders is None:
-        yolo_csv_folders = []
+    # Ensure qos_csv_folders is a list
+    if qos_csv_folder is None:
+        qos_csv_folder = []
 
-    # Copy yolo CSVs from multiple folders
-    for idx, folder in enumerate(yolo_csv_folders):
+    # Copy qos CSVs from multiple folders
+    for idx, folder in enumerate(qos_csv_folder):
         if folder is not None:
             # Create a unique destination folder for each input folder
-            destination_yolo_folder = os.path.join(snapshot_path, f"yolo_outputs_{idx}")
-            shutil.copytree(folder, destination_yolo_folder)
-            log_func(f"Copied warehouse CSV files from {folder} to {destination_yolo_folder}")
+            destination_qos_folder = os.path.join(snapshot_path, f"qos_outputs_{idx}")
+            shutil.copytree(folder, destination_qos_folder)
+            log_func(f"Copied warehouse CSV files from {folder} to {destination_qos_folder}")
 
     # Copying the current script and its configurations to the snapshot
     current_script_path = __file__  # Path to the current script
@@ -51,10 +51,10 @@ def zip_snapshot(snapshot_path, yolo_csv_folders=None, name="yolov8n", log_func=
     delete_original = True  # Set this to False if you do not want to delete
     if delete_original:
         shutil.rmtree(snapshot_path)
-        for folder in yolo_csv_folders:
+        for folder in qos_csv_folder:
             if folder is not None:
                 shutil.rmtree(folder)
-        log_func(f"Deleting original files in {snapshot_path} and provided YOLO folders")
+        log_func(f"Deleting original files in {snapshot_path} and provided QoS folders")
 
     # Log the details
     log_func(f"Zipping completed in {zip_duration:.2f} seconds")
