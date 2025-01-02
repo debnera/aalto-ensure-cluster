@@ -56,6 +56,7 @@ idle_after_end = 0.5 * 60  # (seconds) Catch the tail of the experiment metrics
 total_runtime_hours = 24
 num_workers = [30, 20, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]  # Number of lidar workers (number of worker pods launched on cluster)
 lidar_points = [1000, 5000, 10_000]  # Number of points in a single point cloud (Depends on dataset)
+data_feeder_threads = 8  # In addition to feeding speed, this also affects which robot lidar data is used as input
 hours_per_model = total_runtime_hours / (len(num_workers) * len(lidar_points))
 seconds_per_model = hours_per_model * 3600  # TODO: How to estimate and control time?
 data_per_run = 20000  # TODO: how many items per unit of time?
@@ -230,7 +231,7 @@ for run in runs:
 
     msgs_sent = feeder.run(dataset_path=dataset_path,
                            num_items=5,
-                           num_threads=8,
+                           num_threads=data_feeder_threads,
                            kafka_servers=kafka_servers)
     log(f"Sent {msgs_sent} messages to Kafka")
     msg_ids = set(x for x in range(msgs_sent))
@@ -267,7 +268,7 @@ for run in runs:
 
     frames_sent = feeder.run(dataset_path=dataset_path,
                              num_items=data_per_run,
-                             num_threads=workers,
+                             num_threads=data_feeder_threads,
                              kafka_servers=kafka_servers)
     msg_ids = set(x for x in range(frames_sent))
     log(f"Completed sending {frames_sent} point clouds.\n")
