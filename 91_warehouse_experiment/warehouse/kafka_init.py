@@ -11,13 +11,14 @@ from .utils.misc import create_lock
 
 
 # PARSE PYTHON ARGUMENTS
-def init_kafka(kafka_servers, topic_name, num_partitions=5):
+def init_kafka(kafka_servers, topic_name, num_partitions=5, log_func=print):
     """
     Try to initialize kafka topics, so consumers and others do not complain about missing topics.
 
     Num_partitions should at minimum be equivalent to the total number of consumers in the cluster.
     """
 
+    log_func(f"INIT KAFKA TOPIC: {topic_name}, NUM PARTITIONS: {num_partitions}")
     admin_client = AdminClient({
         'bootstrap.servers': kafka_servers,
     })
@@ -29,7 +30,7 @@ def init_kafka(kafka_servers, topic_name, num_partitions=5):
         for name, parts in admin_client.list_topics().topics.items():
             container[name] = len(parts.partitions)
 
-        # print(json.dumps(container, indent=4))
+        # log_func(json.dumps(container, indent=4))
         return container
 
     # CREATE TOPICS WITH N PARTITIONS OR ADJUST IF EXISTS
@@ -45,9 +46,9 @@ def init_kafka(kafka_servers, topic_name, num_partitions=5):
                 admin_client.create_partitions(
                     {name: NewTopic.Partitions(partitions)}
                 )
-                print(f"INFO: TOPIC ({name}) PARTITIONS UPDATED FROM {current_partitions} TO {partitions}")
+                log_func(f"INFO: TOPIC ({name}) PARTITIONS UPDATED FROM {current_partitions} TO {partitions}")
             else:
-                print(f"INFO: TOPIC ({name}) ALREADY EXISTS WITH {current_partitions} PARTITIONS")
+                log_func(f"INFO: TOPIC ({name}) ALREADY EXISTS WITH {current_partitions} PARTITIONS")
             return
 
         # OTHERWISE, CREATE IT
@@ -70,11 +71,11 @@ def init_kafka(kafka_servers, topic_name, num_partitions=5):
         )
 
     except Exception as err:
-        print(err)
+        log_func(err)
 
     # PRINT CURRENT KAFKA TOPIC STATE
     time.sleep(1)
-    print(json.dumps(query_topics(), indent=4))
+    log_func(json.dumps(query_topics(), indent=4))
 
 def test_topic(kafka_servers, topic_name):
     """ Test that the given topic is can send and receive messages """

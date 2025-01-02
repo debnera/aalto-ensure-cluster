@@ -186,7 +186,7 @@ for run in runs:
     log(f"Making sure the Kafka topics exist")
     for topic, num_partitions in topics.items():
         # Making sure the topic is initialized with correct amount of partitions
-        kafka_init.init_kafka(kafka_servers=kafka_servers, num_partitions=num_partitions, topic_name=topic)
+        kafka_init.init_kafka(kafka_servers=kafka_servers, num_partitions=num_partitions, topic_name=topic, log_func=log)
         # TODO: Making sure the topic contains no messages from previous experiments
         # kafka_init.clear_topic(kafka_servers=kafka_servers, topic_name=topic)
 
