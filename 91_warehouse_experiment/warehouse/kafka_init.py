@@ -1,5 +1,4 @@
 import json
-import time
 from threading import Thread
 
 from confluent_kafka.admin import AdminClient, NewTopic
@@ -16,6 +15,7 @@ def recreate_topic(kafka_servers, topic_name, num_partitions=5, replication_fact
     """
     Always recreate the given Kafka topic to ensure a clean slate.
     Deletes the topic if it already exists, and waits for deletion before recreating it.
+    Verifies that the topic was successfully created.
 
     Args:
         kafka_servers (str): Kafka bootstrap servers.
@@ -63,10 +63,24 @@ def recreate_topic(kafka_servers, topic_name, num_partitions=5, replication_fact
         admin_client.create_topics(new_topics=[
             NewTopic(topic=topic_name, num_partitions=num_partitions, replication_factor=replication_factor)
         ])
-        log_func(f"INFO: Topic {topic_name} created successfully.")
+
+        # VERIFY the topic creation
+        log_func(f"INFO: Verifying topic {topic_name} creation...")
+        start = time.time()
+        topic_created = False
+        while time.time() - start < 10:  # Allow up to 10 seconds for the topic to appear
+            topics = admin_client.list_topics(timeout=5).topics
+            if topic_name in topics:
+                log_func(f"INFO: Topic {topic_name} created successfully.")
+                topic_created = True
+                break
+            time.sleep(2)  # Poll every 2 seconds
+        if not topic_created:
+            log_func(f"ERROR: Topic {topic_name} was not found after creation!")
 
     except Exception as e:
         log_func(f"ERROR: Failed to recreate topic {topic_name}: {e}")
+
 
 
 
