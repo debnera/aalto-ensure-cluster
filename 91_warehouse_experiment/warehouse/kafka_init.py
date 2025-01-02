@@ -157,6 +157,7 @@ def init_kafka(kafka_servers, topic_name, num_partitions=5, log_func=print):
 def test_topic(kafka_servers, topic_name, log_func=print):
     """ Test that the given topic is can send and receive messages """
     thread_lock = create_lock()
+    time.sleep(2) # Allow topic to be created
 
     def cons(lock):
         kafka_client = create_consumer(topic_name, kafka_servers=kafka_servers)
@@ -166,9 +167,10 @@ def test_topic(kafka_servers, topic_name, log_func=print):
 
     consumer_thread = Thread(target=cons, args=(thread_lock,))
     consumer_thread.start()
+    time.sleep(2) # Allow thread to be launched
 
-    max_attempts = 5
-    # TODO: This does not seem to work well, since the messages are consumed by the deployed pods
+    max_attempts = 2
+    # TODO: This does not seem to work well
     for i in range(max_attempts):
         log_func(f"Trying to send msg to {topic_name}")
 
