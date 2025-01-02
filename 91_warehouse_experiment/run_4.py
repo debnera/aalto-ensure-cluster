@@ -15,6 +15,9 @@ Changes to run_3:
 Changes to run_4:
 - Fixed issue with num_workers=(3,5), since datasets do not exist for these values
 -- Default to use the dataset with 6 robots for all unknown values
+- Fixed issues with kafka topics and issues where only one worker was receiving data
+- Increased number of runs and data
+- Set fixed amount of feeder-threads
 
 
 """
@@ -51,11 +54,11 @@ idle_before_start_1 = 120 # (seconds) Wait for application instances to receive 
 idle_before_start_2 = 0.5 * 60  # (seconds) Additional wait after Kafka is verified working
 idle_after_end = 0.5 * 60  # (seconds) Catch the tail of the experiment metrics
 total_runtime_hours = 24
-num_workers = [6, 5, 4, 3, 2, 1]  # Number of lidar workers (number of worker pods launched on cluster)
+num_workers = [30, 20, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]  # Number of lidar workers (number of worker pods launched on cluster)
 lidar_points = [1000, 5000, 10_000]  # Number of points in a single point cloud (Depends on dataset)
 hours_per_model = total_runtime_hours / (len(num_workers) * len(lidar_points))
 seconds_per_model = hours_per_model * 3600  # TODO: How to estimate and control time?
-data_per_run = 10000  # TODO: how many items per unit of time?
+data_per_run = 20000  # TODO: how many items per unit of time?
 deploy_worker_template_path = "kubernetes_templates/worker_template.yaml"  # Template for running the experiments
 deploy_worker_experiment_path = None  # This file will be created from the template
 deploy_master_template_path = "kubernetes_templates/master_template.yaml"  # Template for running the experiments
@@ -227,7 +230,7 @@ for run in runs:
 
     msgs_sent = feeder.run(dataset_path=dataset_path,
                            num_items=5,
-                           num_threads=workers,
+                           num_threads=8,
                            kafka_servers=kafka_servers)
     log(f"Sent {msgs_sent} messages to Kafka")
     msg_ids = set(x for x in range(msgs_sent))
