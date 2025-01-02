@@ -14,6 +14,10 @@ from confluent_kafka.admin import AdminClient, NewTopic
 import time
 
 
+from confluent_kafka.admin import AdminClient, NewTopic
+import time
+
+
 def recreate_topic(kafka_servers, topic_name, num_partitions=5, replication_factor=1, log_func=print):
     """
     Always recreate the given Kafka topic to ensure a clean slate.
@@ -28,22 +32,41 @@ def recreate_topic(kafka_servers, topic_name, num_partitions=5, replication_fact
     """
     admin_client = AdminClient({'bootstrap.servers': kafka_servers})
 
+    def wait_for_topic_deletion(admin_client, topic_name, timeout=30, log_func=print):
+        log_func(f"INFO: Waiting for topic {topic_name} to be deleted...")
+        start = time.time()
+        while time.time() - start < timeout:
+            topics = admin_client.list_topics(timeout=5).topics
+            if topic_name not in topics:
+                log_func(f"INFO: Topic {topic_name} deleted successfully.")
+                return True
+            time.sleep(1)
+        log_func(f"WARNING: Topic {topic_name} still exists after waiting for deletion!")
+        return False
+
+    def validate_partitions(admin_client, topic_name, num_partitions, log_func):
+        topic_metadata = admin_client.list_topics(timeout=10)
+        partitions = len(topic_metadata.topics[topic_name].partitions)
+        if partitions != num_partitions:
+            log_func(f"WARNING: Topic {topic_name} has {partitions} partitions, but {num_partitions} was requested!")
+            return False
+        return True
+
     try:
         # DELETE the topic if it exists
         existing_topics = admin_client.list_topics(timeout=10).topics
         if topic_name in existing_topics:
             log_func(f"INFO: Topic {topic_name} exists, deleting it...")
-            # Deleting topic
             fs = admin_client.delete_topics([topic_name])
-            # Wait for deletion to complete
             for topic, f in fs.items():
                 try:
-                    f.result()  # Result will raise exception on failure
-                    log_func(f"INFO: Topic {topic} deleted successfully.")
+                    f.result()  # Wait for operation to finish
                 except Exception as e:
                     log_func(f"ERROR: Failed to delete topic {topic}: {e}")
-            # Allow some time for topic deletion propagation
-            time.sleep(2)
+            time.sleep(2)  # Allow time for propagation
+            if not wait_for_topic_deletion(admin_client, topic_name, log_func=log_func):
+                log_func(f"ERROR: Could not delete topic {topic_name}, stopping recreation!")
+                return
 
         # CREATE the topic
         log_func(
@@ -51,9 +74,17 @@ def recreate_topic(kafka_servers, topic_name, num_partitions=5, replication_fact
         admin_client.create_topics(new_topics=[
             NewTopic(topic=topic_name, num_partitions=num_partitions, replication_factor=replication_factor)
         ])
-        log_func(f"INFO: Topic {topic_name} created successfully.")
+        time.sleep(2)  # Allow time for topic creation
+
+        # Validate the topic's partition count
+        if validate_partitions(admin_client, topic_name, num_partitions, log_func):
+            log_func(f"INFO: Topic {topic_name} successfully created with {num_partitions} partitions.")
+        else:
+            log_func(f"ERROR: Topic {topic_name} does not have the expected partition count!")
+
     except Exception as e:
         log_func(f"ERROR: Failed to recreate topic {topic_name}: {e}")
+
 
 
 # PARSE PYTHON ARGUMENTS
