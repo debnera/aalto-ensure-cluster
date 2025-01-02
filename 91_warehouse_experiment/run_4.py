@@ -109,6 +109,7 @@ def scale_and_wait_for_replicas(num_replicas, application_name):
     # Start scaling the application
     subprocess.run(
         ["kubectl", "scale", "deployment", f"{application_name}", "-n", f"{namespace}", f"--replicas={num_replicas}"])
+    log(f"Scaling {application_name} to {num_replicas} replicas")
     # Wait for the application to scale
     while True:
         result = subprocess.run(
@@ -122,6 +123,7 @@ def scale_and_wait_for_replicas(num_replicas, application_name):
             break
         log(f"Waiting for {len(running_pods)}/{num_replicas} {application_name} pods to be running...")
         time.sleep(5)  # Wait for 10 seconds before checking again
+    log(f"Application {application_name} has now {num_replicas} replicas running")
 
 
 def wait_for_terminate(num_replicas, application_name):
@@ -138,12 +140,14 @@ def wait_for_terminate(num_replicas, application_name):
             break
         log(f"Waiting for {len(running_pods)}/{num_replicas} application ({application_name}) pods to completely stop...")
         time.sleep(5)  # Wait for 10 seconds before checking again
+    log(f"Application {application_name} is completely stopped")
 
 
 # Function to delete the deployment and service
 def clean_up():
     for app in kube_application_names:
         subprocess.run(["kubectl", "scale", "deployment", f"{app}", "-n", f"{namespace}", "--replicas=0"])
+        log(f"Setting {app} replicas to 0")
 
 
 def get_formatted_time():
