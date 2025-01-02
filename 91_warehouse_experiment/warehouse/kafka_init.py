@@ -10,6 +10,52 @@ from .utils.kafka_utils import create_producer, create_consumer
 from .utils.misc import create_lock
 
 
+from confluent_kafka.admin import AdminClient, NewTopic
+import time
+
+
+def recreate_topic(kafka_servers, topic_name, num_partitions=5, replication_factor=1, log_func=print):
+    """
+    Always recreate the given Kafka topic to ensure a clean slate.
+    Deletes the topic if it already exists, and then recreates it.
+
+    Args:
+        kafka_servers (str): Kafka bootstrap servers.
+        topic_name (str): The name of the topic to create.
+        num_partitions (int): Number of partitions for the topic.
+        replication_factor (int): Replication factor for the topic.
+        log_func (func): Logging function to use for output.
+    """
+    admin_client = AdminClient({'bootstrap.servers': kafka_servers})
+
+    try:
+        # DELETE the topic if it exists
+        existing_topics = admin_client.list_topics(timeout=10).topics
+        if topic_name in existing_topics:
+            log_func(f"INFO: Topic {topic_name} exists, deleting it...")
+            # Deleting topic
+            fs = admin_client.delete_topics([topic_name])
+            # Wait for deletion to complete
+            for topic, f in fs.items():
+                try:
+                    f.result()  # Result will raise exception on failure
+                    log_func(f"INFO: Topic {topic} deleted successfully.")
+                except Exception as e:
+                    log_func(f"ERROR: Failed to delete topic {topic}: {e}")
+            # Allow some time for topic deletion propagation
+            time.sleep(2)
+
+        # CREATE the topic
+        log_func(
+            f"INFO: Creating topic {topic_name} with {num_partitions} partitions and replication factor {replication_factor}.")
+        admin_client.create_topics(new_topics=[
+            NewTopic(topic=topic_name, num_partitions=num_partitions, replication_factor=replication_factor)
+        ])
+        log_func(f"INFO: Topic {topic_name} created successfully.")
+    except Exception as e:
+        log_func(f"ERROR: Failed to recreate topic {topic_name}: {e}")
+
+
 # PARSE PYTHON ARGUMENTS
 def init_kafka(kafka_servers, topic_name, num_partitions=5, log_func=print):
     """

@@ -186,7 +186,7 @@ for run in runs:
     log(f"Making sure the Kafka topics exist")
     for topic, num_partitions in topics.items():
         # Making sure the topic is initialized with correct amount of partitions
-        kafka_init.init_kafka(kafka_servers=kafka_servers, num_partitions=num_partitions, topic_name=topic, log_func=log)
+        kafka_init.recreate_topic(kafka_servers=kafka_servers, num_partitions=num_partitions, topic_name=topic, log_func=log)
         # TODO: Making sure the topic contains no messages from previous experiments
         # kafka_init.clear_topic(kafka_servers=kafka_servers, topic_name=topic)
 
@@ -310,6 +310,8 @@ for run in runs:
     leftover_msgs += worker_validator.wait_for_msg_ids(msg_ids, timeout_s=10)
     log(f"Received {leftover_msgs} delayed messages.")
 
-
+    log(f"Waiting for left-over pods to fully terminate...")
+    wait_for_terminate(0, master_name)
+    wait_for_terminate(0, worker_name)
     log(f"Experiment with warehouse_MODEL={run_name} completed (total {time.time() - run_start:.2f} seconds).\n\n")
 log("All experiments completed.")
