@@ -186,13 +186,12 @@ for run in runs:
 
     # Init and/or reset kafka
     # Specify kafka topics and the number of partitions
-    topics = {"grid_worker_input": workers, "grid_master_input": 1, "grid_worker_validate": 1, "grid_master_validate": 1}
+    topics = {"grid_master_input": 1, "grid_worker_validate": 1, "grid_master_validate": 1}
     log(f"Making sure the Kafka topics exist")
     for topic, num_partitions in topics.items():
         # Making sure the topic is initialized with correct amount of partitions
-        kafka_init.recreate_topic(kafka_servers=kafka_servers, num_partitions=num_partitions, topic_name=topic, log_func=log)
-        # TODO: Making sure the topic contains no messages from previous experiments
-        # kafka_init.clear_topic(kafka_servers=kafka_servers, topic_name=topic)
+        kafka_init.init_kafka(kafka_servers=kafka_servers, num_partitions=num_partitions, topic_name=topic, log_func=log)
+    kafka_init.recreate_topic(kafka_servers=kafka_servers, num_partitions=workers, topic_name="grid_worker_input", log_func=log)
 
     # Update yaml and deploy
     log("")
