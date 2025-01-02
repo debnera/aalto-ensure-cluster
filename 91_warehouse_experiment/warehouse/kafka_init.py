@@ -123,7 +123,7 @@ def init_kafka(kafka_servers, topic_name, num_partitions=5, log_func=print):
     time.sleep(1)
     log_func(json.dumps(query_topics(), indent=4))
 
-def test_topic(kafka_servers, topic_name):
+def test_topic(kafka_servers, topic_name, log_func=print):
     """ Test that the given topic is can send and receive messages """
     thread_lock = create_lock()
 
@@ -136,23 +136,22 @@ def test_topic(kafka_servers, topic_name):
     consumer_thread = Thread(target=cons, args=(thread_lock,))
     consumer_thread.start()
 
-    max_attempts = 1
-    time.sleep(2)
+    max_attempts = 5
     # TODO: This does not seem to work well, since the messages are consumed by the deployed pods
     for i in range(max_attempts):
-        print(f"Trying to send msg to {topic_name}")
+        log_func(f"Trying to send msg to {topic_name}")
 
         kafka_client = create_producer(kafka_servers=kafka_servers)
         kafka_client.push_msg(topic_name, json.dumps({"test": "testing"}).encode('UTF-8'))
-        time.sleep(2)
+        time.sleep(1)
         if not thread_lock.is_active():
-            print(f"Received msg from topic {topic_name}")
+            log_func(f"Received msg from topic {topic_name}")
             break  # Everything works
         else:
-            print(f"Got nothing from topic {topic_name}")
+            log_func(f"Got nothing from topic {topic_name}")
 
     if thread_lock.is_active():
-        print(f"Topic {topic_name} seems stuck...")
+        log_func(f"Topic {topic_name} seems stuck...")
         thread_lock.kill()
     consumer_thread.join()
 
