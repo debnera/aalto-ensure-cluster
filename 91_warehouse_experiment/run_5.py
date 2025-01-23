@@ -71,6 +71,10 @@ master_name = "lidar-master"
 kube_application_names = [worker_name, master_name]
 debug_qos_csv_saving = False
 
+bytes_per_pcl = {
+    1000: 1200,
+    5000: 600,
+    10_000: 240}
 run_4_throughputs = {  # [resolution][num_workers] = max_throughput
     1000: {
         8: 342.0,
@@ -115,6 +119,17 @@ run_4_throughputs = {  # [resolution][num_workers] = max_throughput
         7: 78.4
     }
 }
+
+def get_experiment_throughput_mbps(resolution, num_workers):
+    """
+    Returns the throughput of the experiment in MB/s based on values
+    obtained from run_4.
+    """
+    pcl_per_second = run_4_throughputs[resolution][num_workers]
+    bytes_per_second = pcl_per_second * bytes_per_pcl[resolution]
+    megabytes_per_second = bytes_per_second / (1024 * 1024)
+    scaled_megabytes_per_second = megabytes_per_second * max_throughput_scale
+    return scaled_megabytes_per_second
 
 
 logging.basicConfig(
@@ -309,7 +324,7 @@ for run in runs:
                                         msg_callback=worker_qos_saver.process_event)
     worker_validator.start()
 
-    target_mbps = run_4_throughputs[points][workers] * max_throughput_scale
+    target_mbps = get_experiment_throughput_mbps(points, workers)
     log(f"Feeding data (target_mbps: {target_mbps} MB/s ({max_throughput_scale*100} % of maximum) "
         f"-- feed_workers: {data_feeder_threads} "
         f"-- duration_seconds: {seconds_per_model} seconds).")
