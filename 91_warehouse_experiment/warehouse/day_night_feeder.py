@@ -10,153 +10,189 @@ from .utils.lidar_dataset_reader import load_to_memory
 from .utils.misc import resource_exists, log, create_lock
 
 """
-Burst feeder: Send specified number of sensor data as fast as possible.
+Day-night Feeder: Streams sensor data at a controlled rate over a specified duration using parallel threads.
 """
 
-# python3 feeder.py --num_items 100
-
-# Parse Python arguments
+# Initialize argument parser to get runtime configuration
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    "-m",
-    "--max_mbps",
+    "-m", "--max_mbps",
     type=int,
     default=1,
-    help="Feeder tries to keep this amount of MB/s. Default: 1.",
+    help="Target throughput in MB/s (default: 1 MB/s)."
 )
 parser.add_argument(
-    "-d",
-    "--duration",
+    "-d", "--duration",
     type=int,
     default=600,
-    help="The experiment duration in seconds. Default: 10 minutes.",
+    help="Experiment duration in seconds (default: 10 minutes)."
 )
 parser.add_argument(
-    "-t",
-    "--num_threads",
+    "-t", "--num_threads",
     type=int,
     default=4,
-    help="Number of threads to use. Default: 4."
+    help="Number of threads to use for data transmission (default: 4)."
 )
 
+
 def compute_feeding_scale(time_elapsed_seconds, max_duration_seconds, n_cycles):
-    """  """
+    """
+    Computes a scaling factor for data transmission rate based on the elapsed time.
+    This simulates a day-night cycle using a sinusoidal-patterned interpolation.
+
+    Args:
+        time_elapsed_seconds (float): How far into the experiment we are, in seconds.
+        max_duration_seconds (int): Total experiment duration in seconds.
+        n_cycles (int): Number of day-night cycles within the experiment duration.
+
+    Returns:
+        float: Scaling factor to control transmission speed.
+    """
     default_cycle = [
-        0.03, 0.06, 0.09, 0.12, 0.266, 0.412,
-        0.558, 0.704, 0.85, 0.7625, 0.675, 0.587,
-        0.5, 0.59, 0.68, 0.77, 0.86, 0.97,
-        0.813, 0.656, 0.5, 0.343, 0.186, 0.03
-    ] * n_cycles
+                        0.03, 0.06, 0.09, 0.12, 0.266, 0.412,
+                        0.558, 0.704, 0.85, 0.7625, 0.675, 0.587,
+                        0.5, 0.59, 0.68, 0.77, 0.86, 0.97,
+                        0.813, 0.656, 0.5, 0.343, 0.186, 0.03
+                    ] * n_cycles
 
-    # The corresponding time points for the 24 original values
+    # Interpolate to find the scale value for the elapsed time
     original_time_points = np.linspace(0, max_duration_seconds, len(default_cycle))
-
-    # Perform linear interpolation for the arbitrary time
-    interpolated_value = np.interp(time_elapsed_seconds, original_time_points, default_cycle)
-    return interpolated_value
+    return np.interp(time_elapsed_seconds, original_time_points, default_cycle)
 
 
-def run(target_mbps=1, breakpoints=200, n_cycles=5, num_threads=4, duration_seconds=600,
-        # kafka_servers="130.233.193.117:10001",
+def run(target_mbps=1, n_cycles=5, num_threads=4, duration_seconds=600,
         kafka_servers="localhost:10001",
         dataset_path="../robots-4/points-per-frame-5000.hdf5"):
+    """
+    Runs the burst feeder experiment, streaming data to Kafka topics using multiple threads.
+
+    Args:
+        target_mbps (int): Target data rate in MB/s.
+        n_cycles (int): Number of day-night cycles during the experiment.
+        num_threads (int): Number of threads for parallel data transmission.
+        duration_seconds (int): Experiment duration in seconds.
+        kafka_servers (str): Kafka server connection string.
+        dataset_path (str): Path to the HDF5 dataset to stream.
+    """
+    # Generate unique IDs for each message
     msg_count = itertools.count()
 
     # Ensure the HDF5 dataset exists
-    if not resource_exists(f'{dataset_path}'):
+    if not resource_exists(dataset_path):
+        log(f"Dataset not found at {dataset_path}. Aborting.")
         return next(msg_count)
 
-    # Instantiate the thread kill signal
+    # Create a lock for thread control
     alive_lock = create_lock()
 
-    # Keep track of threads and Kafka producers
+    # List to track threads and Kafka producers
     threads = []
     kafka_producers = []
 
-    # Create Kafka producers for each thread
+    # Initialize Kafka producers for each thread
     for _ in range(num_threads):
         kafka_producer = create_producer(kafka_servers=kafka_servers)
         kafka_producers.append(kafka_producer)
 
-    # Verify Kafka connections
+    # Verify all Kafka connections are active
     for i, producer in enumerate(kafka_producers):
         if not producer.connected():
-            log(f'KAFKA PRODUCER NUMBER {i} NOT CONNECTED! ABORTING...')
+            log(f"Kafka producer #{i} not connected. Aborting.")
             return next(msg_count)
 
-    # Load the dataset
+    # Load the dataset into memory
     all_sensor_data = load_to_memory(dataset_path)
     num_sensors = len(all_sensor_data)
     example_frame = all_sensor_data[0][0]
-    elements_per_frame = example_frame.data.size
+
+    # Calculate frame and event properties
     bytes_per_frame = example_frame.data.nbytes
     events_per_second = (target_mbps * 1024 * 1024) / bytes_per_frame
-    original_time_between_events = (1 / (events_per_second / num_threads))
+    time_between_events = 1 / (events_per_second / num_threads)
     total_items = duration_seconds * events_per_second
     items_per_thread = math.ceil(total_items / num_threads)
 
-    # Thread work loop
+    # Thread worker function
     def thread_work(nth_thread, alive_signal, items_to_send):
+        """
+        Sends data frames from a specific thread to Kafka, adhering to the day-night cycle scaling.
+
+        Args:
+            nth_thread (int): Index of the current thread.
+            alive_signal (create_lock): Signal to manage thread lifecycle.
+            items_to_send (int): Number of items the thread is responsible for sending.
+        """
         sensor_index = nth_thread % num_sensors
         sensor_frames = all_sensor_data[sensor_index]
         index = 0
         experiment_end = experiment_start + duration_seconds
-        time_until_start = experiment_start - time.time()
-        log(f'THREAD {nth_thread} WILL SEND ITEMS FOLLOWING THE DAY-NIGHT-CYCLE FROM SENSOR {sensor_index} AFTER {time_until_start} SECONDS')
 
+        # Log thread start details
+        log(f"Thread {nth_thread} sending data from sensor {sensor_index}.")
+
+        # Wait for experiment start
         while time.time() < experiment_start:
             pass
 
+        # Main transmission loop
         while time.time() < experiment_end:
+            if not alive_signal.is_active():
+                log(f"Thread {nth_thread} terminated.")
+                return
+
             seconds_elapsed = time.time() - experiment_start
             current_scale = compute_feeding_scale(seconds_elapsed, duration_seconds, n_cycles)
-            time_between_events = original_time_between_events * current_scale
+            adjusted_time_between_events = time_between_events * current_scale
 
-            start_time = time.time()
-            if not alive_signal.is_active():
-                log(f'THREAD {nth_thread} WAS KILLED AT {time.time()}')
-                return
+            start_time = time.time()  # Record start time of the event transmission
+
+            # Send the frame and increment indices
             frame = sensor_frames[index % len(sensor_frames)]
-            data_as_bytes = frame.to_bytes()
-            item_id = next(msg_count)
-            item_id_encoded = str(item_id).encode('utf-8')
-            kafka_producers[nth_thread - 1].push_msg('grid_worker_input', data_as_bytes, key=item_id_encoded)
+            kafka_producers[nth_thread - 1].push_msg(
+                'grid_worker_input',
+                frame.to_bytes(),
+                key=str(next(msg_count)).encode('utf-8')
+            )
             index += 1
-            end_time = time.time()
-            remaining_wait_time = time_between_events - (end_time - start_time)
-            if remaining_wait_time > 0:
-                # Time.sleep is not an exact way to accomplish this, but our goal is to guarantee max_mbps, not min_mbps
-                time.sleep(remaining_wait_time)
 
-        ended = time.time()
-        log(f'THREAD {nth_thread} HAS FINISHED AT {ended} -- (took {ended - experiment_start}) s')
+            # Calculate and respect the adjusted wait time before sending the next frame
+            elapsed_time = time.time() - start_time
+            remaining_time = adjusted_time_between_events - elapsed_time
+            if remaining_time > 0:
+                time.sleep(remaining_time)
+
+        log(f"Thread {nth_thread} completed.")
 
     try:
+        # Start the experiment after a short delay
         experiment_start = time.time() + 3
+        log(f"Starting {num_threads} producer threads.")
 
-        log(f'CREATING PRODUCER THREAD POOL ({num_threads})')
-
+        # Launch threads
         for nth in range(num_threads):
             thread = Thread(target=thread_work, args=(nth + 1, alive_lock, items_per_thread))
             threads.append(thread)
             thread.start()
 
         # Wait for all threads to finish
-        [[thread.join() for thread in threads]]
-        end_time = time.time()
-        duration = end_time - experiment_start
-        bps = (bytes_per_frame * total_items) / duration
-        mbps = bps / (1024 * 1024)  # Conversion from bytes to megabytes
-        log(f'EXPERIMENT DONE')
-        log(f'SENT ~{total_items} ITEMS IN {duration} SECONDS ({mbps} MB/s)')
+        for thread in threads:
+            thread.join()
+
+        # Log experiment summary
+        duration = time.time() - experiment_start
+        total_bytes_sent = bytes_per_frame * total_items
+        actual_mbps = total_bytes_sent / (1024 * 1024 * duration)
+        log(f"Experiment completed. {total_items} items sent in {duration:.2f} seconds (~{actual_mbps:.2f} MB/s).")
 
     except KeyboardInterrupt:
+        # Handle manual termination
         alive_lock.kill()
-        log('WORKER & THREADS MANUALLY KILLED..', True)
+        log("Experiment terminated by user.")
 
     return next(msg_count)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
+    # Parse arguments and start the feeder
     py_args = parser.parse_args()
-    run(py_args.num_items, py_args.num_threads)
+    run(py_args.max_mbps, num_threads=py_args.num_threads, duration_seconds=py_args.duration)
