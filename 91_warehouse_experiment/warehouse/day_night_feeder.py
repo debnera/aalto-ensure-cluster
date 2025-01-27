@@ -118,11 +118,11 @@ def run(
     bytes_per_frame = example_frame.data.nbytes
     events_per_second = (target_mbps * 1024 * 1024) / bytes_per_frame
     time_between_events = 1 / (events_per_second / num_threads)
-    total_items = duration_seconds * events_per_second
-    items_per_thread = math.ceil(total_items / num_threads)
+    # total_items = duration_seconds * events_per_second
+    # items_per_thread = math.ceil(total_items / num_threads)
 
     # Thread worker function
-    def thread_work(nth_thread: int, alive_signal: create_lock, items_to_send: int) -> None:
+    def thread_work(nth_thread: int, alive_signal: create_lock) -> None:
         """
         Sends data frames from a specific thread to Kafka, adhering to the day-night cycle scaling.
 
@@ -149,9 +149,9 @@ def run(
                 log(f"Thread {nth_thread} terminated.")
                 return
 
-            seconds_elapsed = time.time() - experiment_start
-            current_scale = compute_feeding_scale(seconds_elapsed, duration_seconds, n_cycles)
-            adjusted_time_between_events = time_between_events * current_scale
+            seconds_since_start = time.time() - experiment_start
+            current_scale = compute_feeding_scale(seconds_since_start, duration_seconds, n_cycles)
+            adjusted_time_between_events = time_between_events / current_scale  # Scale down msg throughput by increasing wait time
 
             start_time = time.time()  # Record start time of the event transmission
 
@@ -179,7 +179,7 @@ def run(
 
         # Launch threads
         for nth in range(num_threads):
-            thread = Thread(target=thread_work, args=(nth + 1, alive_lock, items_per_thread))
+            thread = Thread(target=thread_work, args=(nth + 1, alive_lock))
             threads.append(thread)
             thread.start()
 
@@ -189,8 +189,14 @@ def run(
 
         # Log experiment summary
         duration = time.time() - experiment_start
+
+        # Peek msg_count without changing it
+        total_items = next(msg_count)
+        msg_count = itertools.count(start=total_items)
+
         total_bytes_sent = bytes_per_frame * total_items
-        actual_mbps = total_bytes_sent / (1024 * 1024 * duration)
+        total_mb_sent = total_bytes_sent / (1024 * 1024)
+        actual_mbps = total_mb_sent / duration
         log(f"Experiment completed. {total_items} items sent in {duration:.2f} seconds (~{actual_mbps:.2f} MB/s).")
 
     except KeyboardInterrupt:
