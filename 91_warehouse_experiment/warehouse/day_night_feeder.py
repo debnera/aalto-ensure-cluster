@@ -4,6 +4,7 @@ import math
 import time
 import numpy as np
 from threading import Thread
+from typing import List
 
 from .utils.kafka_utils import create_producer
 from .utils.lidar_dataset_reader import load_to_memory
@@ -35,7 +36,7 @@ parser.add_argument(
 )
 
 
-def compute_feeding_scale(time_elapsed_seconds, max_duration_seconds, n_cycles):
+def compute_feeding_scale(time_elapsed_seconds: float, max_duration_seconds: int, n_cycles: int) -> float:
     """
     Computes a scaling factor for data transmission rate based on the elapsed time.
     This simulates a day-night cycle using a sinusoidal-patterned interpolation.
@@ -57,12 +58,17 @@ def compute_feeding_scale(time_elapsed_seconds, max_duration_seconds, n_cycles):
 
     # Interpolate to find the scale value for the elapsed time
     original_time_points = np.linspace(0, max_duration_seconds, len(default_cycle))
-    return np.interp(time_elapsed_seconds, original_time_points, default_cycle)
+    return float(np.interp(time_elapsed_seconds, original_time_points, default_cycle))
 
 
-def run(target_mbps=1, n_cycles=5, num_threads=4, duration_seconds=600,
-        kafka_servers="localhost:10001",
-        dataset_path="../robots-4/points-per-frame-5000.hdf5"):
+def run(
+        target_mbps: int = 1,
+        n_cycles: int = 5,
+        num_threads: int = 4,
+        duration_seconds: int = 600,
+        kafka_servers: str = "localhost:10001",
+        dataset_path: str = "../robots-4/points-per-frame-5000.hdf5"
+) -> int:
     """
     Runs the burst feeder experiment, streaming data to Kafka topics using multiple threads.
 
@@ -73,6 +79,9 @@ def run(target_mbps=1, n_cycles=5, num_threads=4, duration_seconds=600,
         duration_seconds (int): Experiment duration in seconds.
         kafka_servers (str): Kafka server connection string.
         dataset_path (str): Path to the HDF5 dataset to stream.
+
+    Returns:
+        int: Number of messages sent (used primarily for tracking/debugging).
     """
     # Generate unique IDs for each message
     msg_count = itertools.count()
@@ -113,7 +122,7 @@ def run(target_mbps=1, n_cycles=5, num_threads=4, duration_seconds=600,
     items_per_thread = math.ceil(total_items / num_threads)
 
     # Thread worker function
-    def thread_work(nth_thread, alive_signal, items_to_send):
+    def thread_work(nth_thread: int, alive_signal: create_lock, items_to_send: int) -> None:
         """
         Sends data frames from a specific thread to Kafka, adhering to the day-night cycle scaling.
 
@@ -195,4 +204,8 @@ def run(target_mbps=1, n_cycles=5, num_threads=4, duration_seconds=600,
 if __name__ == "__main__":
     # Parse arguments and start the feeder
     py_args = parser.parse_args()
-    run(py_args.max_mbps, num_threads=py_args.num_threads, duration_seconds=py_args.duration)
+    run(
+        target_mbps=py_args.max_mbps,
+        num_threads=py_args.num_threads,
+        duration_seconds=py_args.duration
+    )
