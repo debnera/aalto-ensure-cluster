@@ -72,9 +72,9 @@ kube_application_names = [worker_name, master_name]
 debug_qos_csv_saving = False
 
 bytes_per_pcl = {
-    1000: 1200,
-    5000: 600,
-    10_000: 240}
+    1000: 12000,
+    5000: 60000,
+    10_000: 120000}
 run_4_throughputs = {  # [resolution][num_workers] = max_throughput
     1000: {
         8: 342.0,
