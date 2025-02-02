@@ -62,6 +62,7 @@ def compute_feeding_scale(time_elapsed_seconds: float, max_duration_seconds: int
 
 
 def run(
+        msg_id_offset: int = 0,
         target_mbps: int = 1,
         n_cycles: int = 5,
         num_threads: int = 4,
@@ -160,7 +161,7 @@ def run(
             kafka_producers[nth_thread - 1].push_msg(
                 'grid_worker_input',
                 frame.to_bytes(),
-                key=str(next(msg_count)).encode('utf-8')
+                key=str(next(msg_count) + msg_id_offset).encode('utf-8')
             )
             index += 1
 
