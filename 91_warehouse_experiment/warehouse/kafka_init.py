@@ -117,9 +117,10 @@ def init_kafka(kafka_servers, topic_name, num_partitions=5, log_func=print):
         # ADJUST PARTITIONS IF TOPIC ALREADY EXISTS
         if name in topic_data:
             current_partitions = topic_data[name]
+            log_func(f"INFO: TOPIC ({name}) HAS {current_partitions} PARTITIONS, TARGETING {partitions} PARTITIONS")
             if current_partitions < partitions:
                 admin_client.create_partitions(
-                    {name: partitions}
+                    [TopicPartition(name, p) for p in partitions]
                 )
                 log_func(f"INFO: TOPIC ({name}) PARTITIONS UPDATED FROM {current_partitions} TO {partitions}")
             else:
