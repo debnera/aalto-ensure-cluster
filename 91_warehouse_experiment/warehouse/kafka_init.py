@@ -120,7 +120,7 @@ def init_kafka(kafka_servers, topic_name, num_partitions=5, log_func=print):
             log_func(f"INFO: TOPIC ({name}) HAS {current_partitions} PARTITIONS, TARGETING {partitions} PARTITIONS")
             if current_partitions < partitions:
                 admin_client.create_partitions(
-                    [TopicPartition(name, p) for p in partitions]
+                    [TopicPartition(name, p) for p in range(partitions)]
                 )
                 log_func(f"INFO: TOPIC ({name}) PARTITIONS UPDATED FROM {current_partitions} TO {partitions}")
             else:
