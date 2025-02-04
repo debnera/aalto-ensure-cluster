@@ -56,16 +56,27 @@ if __name__ == "__main__":
         while True:
             # Get timestamp
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            try:
+                # Get `lidar-worker-hpa` metrics
+                worker_cpu, worker_replicas = get_hpa_metrics("lidar-worker-hpa", "workloadc")
 
-            # Get `lidar-worker-hpa` metrics
-            worker_cpu, worker_replicas = get_hpa_metrics("lidar-worker-hpa", "workloadc")
+                # Get `lidar-master-hpa` metrics
+                master_cpu, master_replicas = get_hpa_metrics("lidar-master-hpa", "workloadc")
 
-            # Get `lidar-master-hpa` metrics
-            master_cpu, master_replicas = get_hpa_metrics("lidar-master-hpa", "workloadc")
+                # Print status
+                print(
+                    f"[{timestamp}] "
+                    f"cpu-avg-worker: {worker_cpu}, replicas-worker: {worker_replicas}, "
+                    f"cpu-avg-master: {master_cpu}, replicas-master: {master_replicas}"
+                )
 
-            # Write results to CSV if metrics are available
-            write_to_csv(timestamp, worker_cpu, master_cpu, worker_replicas, master_replicas)
-
+                # Write results to CSV if metrics are available
+                write_to_csv(timestamp, worker_cpu, master_cpu, worker_replicas, master_replicas)
+            except:
+                print(
+                    f"[{timestamp}] no status available."
+                )
+                pass
             # Wait for 5 seconds
             time.sleep(5)
 
