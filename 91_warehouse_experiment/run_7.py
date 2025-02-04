@@ -28,6 +28,7 @@ Changes to run_6:
 
 Changes to run_7:
 - Use horizontal pod autoscaler instead of manual scaling
+- Adjust kafka partitions to be suitable for dynamic worker/master counts
 """
 
 
@@ -62,6 +63,7 @@ total_runtime_hours = 24
 num_workers = [1]  # Number of lidar workers (number of worker pods launched on cluster)
 experiment_order_run_4 = [3, 10, 1, 2, 9, 20, 8, 30, 4, 7, 6, 5]  # Fetch run_4 throughputs in this order
 lidar_points = [1000, 5000, 10_000]  # Number of points in a single point cloud (Depends on dataset)
+num_kafka_partitions = 100 # Should be equal or higher than the max amount of pods per topic (e.g., hpa max master pods 5 -> need at least 5 partitions)
 data_feeder_threads = 8  # In addition to feeding speed, this also affects which robot lidar data is used as input
 hours_per_model = total_runtime_hours / (len(experiment_order_run_4) * len(lidar_points))
 seconds_per_model = hours_per_model * 3600
@@ -275,13 +277,13 @@ for run in runs:
 
     # Init and/or reset kafka
     # Specify kafka topics and the number of partitions
-    topics = {"grid_master_input": 1, "grid_worker_validate": 1, "grid_master_validate": 1}
+    topics = {"grid_worker_input": num_kafka_partitions, "grid_master_input": num_kafka_partitions, "grid_worker_validate": 1, "grid_master_validate": 1}
     log(f"Making sure the Kafka topics exist")
     for topic, num_partitions in topics.items():
         # Making sure the topic is initialized with correct amount of partitions
         kafka_init.init_kafka(kafka_servers=kafka_servers, num_partitions=num_partitions, topic_name=topic, log_func=log)
         kafka_init.test_topic(kafka_servers=kafka_servers, topic_name=topic, log_func=log)
-    kafka_init.recreate_topic(kafka_servers=kafka_servers, num_partitions=workers, topic_name="grid_worker_input", log_func=log)
+    # kafka_init.recreate_topic(kafka_servers=kafka_servers, num_partitions=workers, topic_name="grid_worker_input", log_func=log)
     kafka_init.test_topic(kafka_servers=kafka_servers, topic_name="grid_worker_input", log_func=log)
 
     # Update yaml and deploy

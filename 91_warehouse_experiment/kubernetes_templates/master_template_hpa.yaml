@@ -42,7 +42,7 @@ spec:
             limits:
               cpu: 1000m
             requests:
-              cpu: 100m
+              cpu: 300m
 ---
 apiVersion: v1
 kind: Service
