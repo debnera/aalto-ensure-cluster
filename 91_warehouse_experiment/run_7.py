@@ -284,7 +284,7 @@ for run in runs:
         kafka_init.init_kafka(kafka_servers=kafka_servers, num_partitions=num_partitions, topic_name=topic, log_func=log)
         kafka_init.test_topic(kafka_servers=kafka_servers, topic_name=topic, log_func=log)
     # kafka_init.recreate_topic(kafka_servers=kafka_servers, num_partitions=workers, topic_name="grid_worker_input", log_func=log)
-    kafka_init.test_topic(kafka_servers=kafka_servers, topic_name="grid_worker_input", log_func=log)
+    # kafka_init.test_topic(kafka_servers=kafka_servers, topic_name="grid_worker_input", log_func=log)
 
     # Update yaml and deploy
     log("")
