@@ -1,67 +1,68 @@
-import subprocess
 import csv
+import subprocess
+import threading
 import time
 from datetime import datetime
 
-# File path for storing the CSV data
-OUTPUT_FILE = "hpa_status_log.csv"
 
+class HPALogger:
+    def __init__(self, output_file):
+        self.output_file = output_file
+        self._stop_event = threading.Event()
+        self._thread = None
 
-# Function to get HPA metrics
-def get_hpa_metrics(hpa_name, namespace):
-    try:
-        # Run kubectl command to get HPA details
-        result = subprocess.run(
-            ["kubectl", "get", "hpa", hpa_name, "-n", namespace, "-o", "json"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            check=True,
-        )
+    # File path for storing the CSV data
+    def get_hpa_metrics(self, hpa_name, namespace):
+        try:
+            # Run kubectl command to get HPA details
+            result = subprocess.run(
+                ["kubectl", "get", "hpa", hpa_name, "-n", namespace, "-o", "json"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=True,
+            )
 
-        # Parse the JSON response (assuming kubectl is returning valid JSON)
-        import json
-        hpa_data = json.loads(result.stdout)
+            # Parse the JSON response (assuming kubectl is returning valid JSON)
+            import json
+            hpa_data = json.loads(result.stdout)
 
-        # Extract metrics for CPU utilization and replicas
-        current_cpu = hpa_data["status"]["currentMetrics"][0]["resource"]["current"]["averageUtilization"]
-        replicas = hpa_data["status"]["currentReplicas"]
+            # Extract metrics for CPU utilization and replicas
+            current_cpu = hpa_data["status"]["currentMetrics"][0]["resource"]["current"]["averageUtilization"]
+            replicas = hpa_data["status"]["currentReplicas"]
 
-        return current_cpu, replicas
+            return current_cpu, replicas
 
-    except subprocess.CalledProcessError as e:
-        print(f"Error fetching HPA metrics: {e.stderr}")
-        return None, None
-    except KeyError:
-        # In case metrics are not available yet
-        print(f"Metrics not available for HPA {hpa_name}")
-        return None, None
+        except subprocess.CalledProcessError as e:
+            print(f"Error fetching HPA metrics: {e.stderr}")
+            return None, None
+        except KeyError:
+            # In case metrics are not available yet
+            print(f"Metrics not available for HPA {hpa_name}")
+            return None, None
 
+    def write_to_csv(self, timestamp, worker_cpu, master_cpu, worker_replicas, master_replicas):
+        # Write data to CSV
+        with open(self.output_file, mode="a", newline="") as csvfile:
+            csv_writer = csv.writer(csvfile)
+            csv_writer.writerow([timestamp, worker_cpu, master_cpu, worker_replicas, master_replicas])
 
-def write_to_csv(timestamp, worker_cpu, master_cpu, worker_replicas, master_replicas):
-    # Write data to CSV
-    with open(OUTPUT_FILE, mode="a", newline="") as csvfile:
-        csv_writer = csv.writer(csvfile)
-        csv_writer.writerow([timestamp, worker_cpu, master_cpu, worker_replicas, master_replicas])
+    def _log_hpa_metrics(self):
+        # CSV Header
+        with open(self.output_file, mode="w", newline="") as csvfile:
+            csv_writer = csv.writer(csvfile)
+            csv_writer.writerow(["timestamp", "cpu-avg-worker", "cpu-avg-master", "replicas-worker", "replicas-master"])
 
-
-if __name__ == "__main__":
-    # CSV Header
-    with open(OUTPUT_FILE, mode="w", newline="") as csvfile:
-        csv_writer = csv.writer(csvfile)
-        csv_writer.writerow(["timestamp", "cpu-avg-worker", "cpu-avg-master", "replicas-worker", "replicas-master"])
-
-    print("Starting to log HPA metrics every 5 seconds... Press Ctrl+C to stop.")
-    try:
-        while True:
+        print("Starting to log HPA metrics every 5 seconds... Press Ctrl+C to stop.")
+        while not self._stop_event.is_set():
             # Get timestamp
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             try:
                 # Get `lidar-worker-hpa` metrics
-                worker_cpu, worker_replicas = get_hpa_metrics("lidar-worker-hpa", "workloadc")
+                worker_cpu, worker_replicas = self.get_hpa_metrics("lidar-worker-hpa", "workloadc")
 
                 # Get `lidar-master-hpa` metrics
-                master_cpu, master_replicas = get_hpa_metrics("lidar-master-hpa", "workloadc")
+                master_cpu, master_replicas = self.get_hpa_metrics("lidar-master-hpa", "workloadc")
 
                 # Print status
                 print(
@@ -71,7 +72,7 @@ if __name__ == "__main__":
                 )
 
                 # Write results to CSV if metrics are available
-                write_to_csv(timestamp, worker_cpu, master_cpu, worker_replicas, master_replicas)
+                self.write_to_csv(timestamp, worker_cpu, master_cpu, worker_replicas, master_replicas)
             except:
                 print(
                     f"[{timestamp}] no status available."
@@ -80,5 +81,28 @@ if __name__ == "__main__":
             # Wait for 5 seconds
             time.sleep(5)
 
+    def start_thread(self):
+        if not self._thread or not self._thread.is_alive():
+            self._stop_event.clear()
+            self._thread = threading.Thread(target=self._log_hpa_metrics, daemon=True)
+            self._thread.start()
+        else:
+            print("Logger is already running.")
+
+    def stop_thread(self):
+        if self._thread and self._thread.is_alive():
+            self._stop_event.set()
+            self._thread.join()
+            print("Logger stopped.")
+        else:
+            print("Logger is not running.")
+
+if __name__ == "__main__":
+    hpa_logger = HPALogger("hpa_metrics.csv")
+    hpa_logger.start_thread()
+    try:
+        while True:
+            time.sleep(1)
     except KeyboardInterrupt:
-        print("Logging stopped.")
+        hpa_logger.stop_thread()
+
