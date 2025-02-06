@@ -36,11 +36,11 @@ class HPALogger:
             return current_cpu, replicas
 
         except subprocess.CalledProcessError as e:
-            print(f"Error fetching HPA metrics: {e.stderr}")
+            print(f"[HPA_LOGGER]: Error fetching HPA metrics: {e.stderr}")
             return None, None
         except KeyError:
             # In case metrics are not available yet
-            print(f"Metrics not available for HPA {hpa_name}")
+            print(f"[HPA_LOGGER]: Metrics not available for HPA {hpa_name}")
             return None, None
 
     def write_to_csv(self, timestamp, worker_cpu, master_cpu, worker_replicas, master_replicas):
@@ -55,7 +55,7 @@ class HPALogger:
             csv_writer = csv.writer(csvfile)
             csv_writer.writerow(["timestamp", "cpu-avg-worker", "cpu-avg-master", "replicas-worker", "replicas-master"])
 
-        print("Starting to log HPA metrics every 5 seconds... Press Ctrl+C to stop.")
+        print(f"[HPA_LOGGER]: Starting to log HPA metrics every 5 seconds... Press Ctrl+C to stop.")
         while not self._stop_event.is_set():
             # Get timestamp
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -69,6 +69,7 @@ class HPALogger:
                 # Print status
                 print(
                     f"[{timestamp}] "
+                    "[HPA_LOGGER]: "
                     f"cpu-avg-worker: {worker_cpu}, replicas-worker: {worker_replicas}, "
                     f"cpu-avg-master: {master_cpu}, replicas-master: {master_replicas}"
                 )
@@ -76,9 +77,7 @@ class HPALogger:
                 # Write results to CSV if metrics are available
                 self.write_to_csv(timestamp, worker_cpu, master_cpu, worker_replicas, master_replicas)
             except:
-                print(
-                    f"[{timestamp}] no status available."
-                )
+                print(f"[{timestamp}] [HPA_LOGGER]:  no status available.")
                 pass
             # Wait for 5 seconds
             time.sleep(5)
@@ -89,15 +88,15 @@ class HPALogger:
             self._thread = threading.Thread(target=self._log_hpa_metrics, daemon=True)
             self._thread.start()
         else:
-            print("Logger is already running.")
+            print(f"[HPA_LOGGER]: Logger is already running.")
 
     def stop_thread(self):
         if self._thread and self._thread.is_alive():
             self._stop_event.set()
             self._thread.join()
-            print("Logger stopped.")
+            print(f"[HPA_LOGGER]: Logger stopped.")
         else:
-            print("Logger is not running.")
+            print(f"[HPA_LOGGER]: Logger is not running.")
 
 if __name__ == "__main__":
     hpa_logger = HPALogger("hpa_metrics.csv")
