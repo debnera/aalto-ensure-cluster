@@ -2,12 +2,14 @@ import csv
 import subprocess
 import threading
 import time
+import os
 from datetime import datetime
 
 
 class HPALogger:
     def __init__(self, output_file):
         self.output_file = output_file
+        os.makedirs(os.path.dirname(self.output_file), exist_ok=True)
         self._stop_event = threading.Event()
         self._thread = None
 

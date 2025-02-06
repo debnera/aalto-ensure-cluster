@@ -32,6 +32,11 @@ Changes to run_7:
 
 Changes to run_7b:
 - Fix number of kafka partitions (1 partition for 40 workers will not do any good)
+
+Changes to run_7c:
+- Use linearly increasing workloads (instead of shuffled)
+- Add time between workloads to maker the cycles visually more clear
+- Automate use of hpa_logger
 """
 
 
@@ -50,6 +55,7 @@ from data_extractor import extractor
 import datetime
 import argparse  # New import for argument parsing
 from warehouse.zip_snapshot import zip_snapshot
+from hpa_logger import HPALogger
 
 
 # Argument parser for command-line arguments
@@ -62,9 +68,11 @@ kafka_wait_timeout = 600
 idle_before_start_1 = 120 # (seconds) Wait for application instances to receive their kafka assignments - otherwise might get stuck
 idle_before_start_2 = 0.5 * 60  # (seconds) Additional wait after Kafka is verified working
 idle_after_end = 0.5 * 60  # (seconds) Catch the tail of the experiment metrics
+time_between_cycles = 60
 total_runtime_hours = 24
 num_workers = [1]  # Number of lidar workers (number of worker pods launched on cluster)
-experiment_order_run_4 = [3, 10, 1, 2, 9, 20, 8, 30, 4, 7, 6, 5]  # Fetch run_4 throughputs in this order
+# experiment_order_run_4 = [3, 10, 1, 2, 9, 20, 8, 30, 4, 7, 6, 5]  # Fetch run_4 throughputs in this order
+experiment_order_run_4 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 30]  # Fetch run_4 throughputs in this order
 lidar_points = [1000, 5000, 10_000]  # Number of points in a single point cloud (Depends on dataset)
 num_kafka_partitions = 100 # Should be equal or higher than the max amount of pods per topic (e.g., hpa max master pods 5 -> need at least 5 partitions)
 data_feeder_threads = 8  # In addition to feeding speed, this also affects which robot lidar data is used as input
@@ -262,6 +270,7 @@ wait_for_terminate(0, worker_name)
 runs = [(workers, points) for workers in num_workers for points in lidar_points]
 for run in runs:
     run_start = time.time()
+
     workers, points = run
     run_name = f"{run}".replace(" ", "").replace(",", ".")
     dataset_path = f"datasets/robots-{workers}_points-{points}.hdf5"
@@ -340,6 +349,8 @@ for run in runs:
     # Start measuring the cluster from this point forwards
     start_time = get_formatted_time()
     start_hpa()
+    hpa_logger = HPALogger(f"{qos_csv_folder}/hpa.csv")
+    hpa_logger.start_thread()
     log(start_time)
     log(f"Waiting for {idle_before_start_2} seconds")
     time.sleep(
@@ -375,6 +386,8 @@ for run in runs:
         cumulative_frames_sent += frames_sent
         log_hpa_state()
         log(f"Completed sending {frames_sent} point clouds. (total: {cumulative_frames_sent})\n")
+        log(f"Waiting for {time_between_cycles} seconds before starting the next cycle.")
+        time.sleep(time_between_cycles)
     msg_ids = set(x for x in range(cumulative_frames_sent))
     # Wait for results
     log("Waiting for worker results.")
@@ -394,6 +407,7 @@ for run in runs:
     log(f"Cleaning up...")
     stop_hpa()
     clean_up()
+    hpa_logger.stop_thread()
 
     log(end_time)
     log(f"Extracting data...")
@@ -401,7 +415,7 @@ for run in runs:
         start_time=start_time,
         end_time=end_time,
         sampling=5,  # Sampling rate used by prometheus during the experiment (seconds)
-        segment_size=1000,
+        segment_size=500,
         n_threads=4,  # Cluster nodes have 4 cores?
     )
     log("Data extracted.")
