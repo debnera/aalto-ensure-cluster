@@ -1,4 +1,4 @@
-# Exposing the cluster to an external cloud service
+# Using the cluster from a remote location
 
 These are helper scripts that expose SSH, Grafana and Prometheus ports to an external cloud server. 
 
