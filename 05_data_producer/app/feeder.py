@@ -1,8 +1,11 @@
+import cv2
+
 from utilz.dataset_utils import load_dataset
 from utilz.misc import resource_exists, log, create_lock, resize_array
 from utilz.kafka_utils import create_producer
 from threading import Thread, Semaphore
 import time, math, random, argparse
+import itertools
 
 # python3 feeder.py --duration 7200 --breakpoints 200 --max_mbps 15
 
@@ -33,13 +36,13 @@ parser.add_argument(
     "-c",
     "--n_cycles",
     type=int,
-    default=1,
+    default=5,
     help="How many day-night cycles should be performed",
 )
 
-def run():
+def run(max_mbps=1, breakpoints=200, duration_seconds=60 * 60 * 2, n_cycles=5):
 
-    py_args = parser.parse_args()
+
 
     # DYNAMIC ARGUMENTS
     args = {
@@ -54,9 +57,9 @@ def run():
 
         # EXPERIMENT DETAILS
         'experiment': {
-            'max_mbs': py_args.max_mbps,
-            'n_breakpoints': py_args.breakpoints,
-            'duration': py_args.duration, 
+            'max_mbs': max_mbps,
+            'n_breakpoints': breakpoints,
+            'duration': duration_seconds,
         }
     }
 
@@ -70,6 +73,7 @@ def run():
     # INSTANTIATE THREAD LOCKS
     thread_lock = create_lock()
     semaphore = Semaphore(1)
+    image_count = itertools.count()
 
     # KEEP TRACK THREADS AND KAFKA PRODUCERS
     threads = []
@@ -100,11 +104,16 @@ def run():
             0.558,  0.704,  0.85,   0.7625, 0.675,  0.587,
             0.5,    0.59,   0.68,   0.77,   0.86,   0.97,
             0.813,  0.656,  0.5,    0.343,  0.186,  0.03
-        ] * py_args.n_cycles
+        ] * n_cycles
 
+        #new linear cycle
+        linear_cycle = []
+        for x in range(1, 25):
+            linear_cycle.append(x / 24)
+        print(linear_cycle)
         # SCALE THE ARRAY WHILE MAINTAINING RATIOS
         real_cycle = resize_array(
-            default_cycle, 
+            linear_cycle,
             args['experiment']['n_breakpoints']
         )
 
@@ -170,8 +179,10 @@ def run():
             started = time.time()
 
             # SELECT NEXT BUFFER ITEM
-            item = dataset[next_index]
-            kafka_producers[nth_thread - 1].push_msg('yolo_input', item.tobytes())
+            image = dataset[next_index]
+            img_as_bytes = image.tobytes()
+            image_id = next(image_count)
+            kafka_producers[nth_thread - 1].push_msg('yolo_input', img_as_bytes)
             
             # FETCH THE LATEST ACTION COOLDOWN
             with semaphore:
@@ -217,4 +228,8 @@ def run():
         thread_lock.kill()
         log('WORKER & THREADS MANUALLY KILLED..', True)
 
-run()
+    return next(image_count)
+
+if __name__ == '__main__':
+    py_args = parser.parse_args()
+    run(py_args.max_mbps, py_args.breakpoints, py_args.duration, py_args.n_cycles, py_args.compress)

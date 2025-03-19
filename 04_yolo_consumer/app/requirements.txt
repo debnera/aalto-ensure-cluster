@@ -4,6 +4,7 @@ torch
 opencv-python
 ultralytics
 bezier
+openvino
 
 gitpython
 gitdb

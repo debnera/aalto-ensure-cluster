@@ -13,6 +13,8 @@
 - This inference process is designed to induce a relatively realistic workload for the cluster.
 - Conducted experiments have been able to exhaustively use the clusters CPU resource.
 
+- Development of a new consumer script that uses `OpenVino` with `Yolo` is currently being developed, but GPU capabilites are yet to be figured out. This is in the [`/app/processor_vino.py`](/app/processor_vino.py) file.
+
 <!-- ########################################################################################################## -->
 ## Table of Contents
 
@@ -77,7 +79,7 @@ args = {
 
 ```bash
 # BUILD THE DOCKER IMAGE
-docker build --no-cache -t workload_consumer -f consumer.Dockerfile .
+docker build -t workload_consumer -f consumer.Dockerfile .
 
 # MAKE SURE THAT THE IMAGE WORKS
 docker run workload_consumer
@@ -100,10 +102,10 @@ docker login
 
 ```bash
 # SET YOUR GIT USERNAME
-MY_GIT_USERNAME="wickstjo"
+MY_GIT_USERNAME="roopekettunen"
 
 # BUILD THE DOCKER IMAGE
-docker build --no-cache -t workload_consumer -f consumer.Dockerfile .
+docker build -t workload_consumer -f consumer.Dockerfile .
 
 # TAG & UPLOAD THE IMAGE TO DOCKER HUB REGISTRY
 docker tag workload_consumer:latest $MY_GIT_USERNAME/workload_consumer:latest
@@ -121,7 +123,7 @@ docker push $MY_GIT_USERNAME/workload_consumer:latest
 #### 4.1. DEFINE THE DOCKER IMAGE
 ```yaml
 # DEFINE THE DOCKERHUB LOCATION OF YOUR IMAGE
-image: wickstjo/workload_consumer:latest
+image: roopekettunen/workload_consumer:latest
 
 # FORCES THE KUBE NODE TO PULL THE NEWEST VERSION OF THE IMAGE
 # IF IT DOESNT ALREADY EXIST LOCALLY
@@ -185,6 +187,7 @@ maxReplicas: 34
 
 - This property goes hand-in-hand with resource limits.
 - The minimum values should be at least 1, while the maximum value can technically be infinite, even if `(max_pods * min_pod_resource) > cluster_total_resources`
+- To obtain a constant value in experiments (thus disabling any scaling), setting minReplicas=maxReplicas seems to do the trick 
 
 <!-- ########################################################################################################## -->
 #### 4.5. DEFINE WHEN PODS SHOULD BE CREATED/DESTROYED

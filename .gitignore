@@ -9,3 +9,6 @@
 
 # Local Kafka DB
 03_kafka_mq/db_prometheus/
+
+# Log files from local testing
+*.log

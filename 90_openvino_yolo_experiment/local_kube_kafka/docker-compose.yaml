@@ -1,0 +1,54 @@
+# SHARED KAFKA PROPS
+x-kafka_shared: &kafka_shared
+  image: confluentinc/cp-kafka:7.3.0
+  depends_on:
+    - kafka_zookeeper
+# SHARED KAFKA ENV
+x-kafka_env: &kafka_env
+  KAFKA_AUTO_CREATE_TOPICS_ENABLE: True
+  KAFKA_NUM_PARTITIONS: 10
+  KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+  KAFKA_ZOOKEEPER_CONNECT: kafka_zookeeper:2181
+  KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+  KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+  KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+  KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+services:
+  # ZOOKEEPER FOR KAFKA BROKER COORDINATION
+  kafka_zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.0
+    environment:
+      ZOOKEEPER_SERVER_ID: 1
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_INIT_LIMIT: 5
+      ZOOKEEPER_SYNC_LIMIT: 2
+    ports:
+      - 2181:2181
+  # FIRST BROKER
+  kafka_broker_1:
+    <<: *kafka_shared
+    ports:
+      - 10001:10001
+    environment:
+      <<: *kafka_env
+      KAFKA_BROKER_ID: 1
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka_broker_1:11000,PLAINTEXT_HOST://${LOCAL_IP}:10001
+  # SECOND BROKER
+  kafka_broker_2:
+    <<: *kafka_shared
+    ports:
+      - 10002:10002
+    environment:
+      <<: *kafka_env
+      KAFKA_BROKER_ID: 2
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka_broker_2:11000,PLAINTEXT_HOST://${LOCAL_IP}:10002
+  # THIRD BROKER
+  kafka_broker_3:
+    <<: *kafka_shared
+    ports:
+      - 10003:10003
+    environment:
+      <<: *kafka_env
+      KAFKA_BROKER_ID: 3
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka_broker_3:11000,PLAINTEXT_HOST://${LOCAL_IP}:10003

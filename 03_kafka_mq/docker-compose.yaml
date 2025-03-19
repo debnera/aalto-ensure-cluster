@@ -8,6 +8,11 @@ x-kafka_shared: &kafka_shared
   volumes:
     - ./configs/kafka_scraper.yml:/usr/app/kafka_scraper.yml
     - ./configs/jmx_prometheus_javaagent-0.17.2.jar:/usr/app/jmx_prometheus_javaagent.jar
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "10m"        # Limit log file size to 10 MB
+      max-file: "3"          # Maximum of 3 log files retained
 
 # SHARED KAFKA ENV
 x-kafka_env: &kafka_env
@@ -20,6 +25,10 @@ x-kafka_env: &kafka_env
   KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
   KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
   KAFKA_JMX_OPTS: "-javaagent:/usr/app/jmx_prometheus_javaagent.jar=11001:/usr/app/kafka_scraper.yml"
+  # Retention settings to limit Kafka log storage
+  KAFKA_LOG_RETENTION_HOURS: 48         # Retain logs for 2 days
+  KAFKA_LOG_RETENTION_BYTES: 1073741824 # Limit per partition log size to 1 GB
+  KAFKA_LOG_SEGMENT_BYTES: 1073741824   # Log segment size 1 GB
 
 services:
 
@@ -36,6 +45,11 @@ services:
       - 2181:2181
     networks:
       - proxynet
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # FIRST BROKER
   kafka_broker_1:
@@ -50,37 +64,7 @@ services:
     networks:
       - proxynet
 
-  # SECOND BROKER
-  kafka_broker_2:
-    <<: *kafka_shared
-    ports:
-      - 10002:10002
-    environment:
-      <<: *kafka_env
-      KAFKA_BROKER_ID: 2
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka_broker_2:11000,PLAINTEXT_HOST://130.233.193.117:10002
-      # KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka_broker_2:11000,PLAINTEXT_HOST://localhost:10002
-    networks:
-      - proxynet
-
-  # THIRD BROKER
-  kafka_broker_3:
-    <<: *kafka_shared
-    ports:
-      - 10003:10003
-    environment:
-      <<: *kafka_env
-      KAFKA_BROKER_ID: 3
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka_broker_3:11000,PLAINTEXT_HOST://130.233.193.117:10003
-      # KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka_broker_3:11000,PLAINTEXT_HOST://localhost:10003
-    networks:
-      - proxynet
-
-############################################################################################
-############################################################################################
-
-  # DEDICATED PROMETHEUS SERVER FOR JUST KAFKA
-  # NOTE THE 9091 PORT, WHILE KUBE PROMETHEUS RUNS ON 9090
+  # PROMETHEUS SERVER FOR MONITORING KAFKA
   prometheus:
     image: prom/prometheus:v2.43.0
     volumes:
@@ -92,8 +76,15 @@ services:
       - '9091:9090'
     command:
       - '--config.file=/etc/prometheus/config.yml'
+      - '--storage.tsdb.retention.time=7d'  # Retain metrics for 7 days
+      - '--storage.tsdb.retention.size=2GB' # Limit Prometheus DB size to 2GB
     networks:
       - proxynet
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   proxynet:

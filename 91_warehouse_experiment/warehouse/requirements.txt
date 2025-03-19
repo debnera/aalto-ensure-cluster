@@ -1,0 +1,10 @@
+h5py==3.12.1
+matplotlib
+numba==0.60.0
+confluent-kafka
+kafka-python
+pyaml
+pandas
+requests
+
+
